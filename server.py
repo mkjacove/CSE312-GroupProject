@@ -3,6 +3,7 @@ from utils.auth import auth_bp
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
+app.secret_key = "very_secret_key"
 
 @app.route("/")
 def home():
