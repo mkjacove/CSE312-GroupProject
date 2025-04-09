@@ -1,15 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Register</title>
-</head>
-<body>
-    <h2>Register</h2>
-    <form method="POST">
-        <input type="text" name="username" placeholder="Username" required><br><br>
-        <input type="password" name="password" placeholder="Password" required><br><br>
-        <button type="submit">Register</button>
-    </form>
-</body>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#021217",
+            },
+          },
+        },
+      };
+    </script>
+    <style type="text/tailwindcss">
+      @layer base {
+        h1 {
+          @apply text-4xl font-bold;
+        }
+
+        input {
+          @apply text-black focus:outline-none focus:ring-0;
+        }
+      }
+    </style>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #021217;
+        color: white;
+      }
+    </style>
+  </head>
+  <body class="flex items-center justify-center min-h-screen">
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+      <h2 class="text-2xl font-semibold mb-6 text-center">Register</h2>
+      <form method="POST" class="flex flex-col gap-4">
+        <input
+          type="text"
+          name="username"
+          placeholder="Username"
+          required
+          class="p-2 rounded-md"
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          required
+          class="p-2 rounded-md"
+        />
+        <button
+          type="submit"
+          class="bg-gray-700 hover:bg-gray-600 transition-colors text-white py-2 rounded-xl"
+        >
+          Register
+        </button>
+      </form>
+    </div>
+  </body>
 </html>

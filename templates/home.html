@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>312game.com</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#0f172a", // slate-900
+              accent: "#38bdf8",  // sky-400
+              glass: "rgba(255, 255, 255, 0.1)",
+            },
+            backdropBlur: {
+              xs: "2px",
+            },
+          },
+        },
+      };
+    </script>
+    <style type="text/tailwindcss">
+      @layer base {
+        body {
+          @apply font-[Poppins] text-white bg-gradient-to-br from-primary to-gray-800;
+        }
+
+        h1 {
+          @apply text-4xl font-bold;
+        }
+
+        input,
+        textarea {
+          @apply text-black focus:outline-none focus:ring-2 focus:ring-accent;
+        }
+      }
+    </style>
+    <style>
+      .nav-group a {
+        transition: all 0.2s ease-in-out;
+      }
+      .nav-group a:hover {
+        color: #38bdf8;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="flex flex-row w-full h-screen">
+      <!-- Alert Popup -->
+      <div class="relative">
+        <div
+          id="alert-container"
+          class="fixed top-16 right-4 flex flex-col-reverse gap-4 min-w-[300px] [&>*]:transition-all [&>*]:duration-300 z-50"
+        ></div>
+      </div>
+
+      <!-- Sidebar -->
+      <navbar class="flex flex-col px-10 py-8 min-w-[19rem] h-full border-r border-white/10 bg-glass backdrop-blur-md shadow-md rounded-tr-2xl rounded-br-2xl">
+        <a href="/">
+          <h1 class="mb-8 text-accent">312game.com</h1>
+        </a>
+        <div class="flex flex-col gap-3">
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="house"></i>
+            <a href="/">Home</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="smile"></i>
+            <a href="/play">Play Game</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="trophy"></i>
+            <a href="/leaderboard">Leaderboard</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="chart-column"></i>
+            <a href="/player-statistics">Player Statistics</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="award"></i>
+            <a href="/achievements">Achievements</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="circle-user-round"></i>
+            <a href="/change-avatar">Change Avatar</a>
+          </div>
+          <div class="nav-group flex items-center gap-3">
+            <i data-lucide="mail"></i>
+            <a href="/direct-messaging">Direct Messaging</a>
+          </div>
+        </div>
+      </navbar>
+
+      <!-- Main Content -->
+      <div class="flex flex-col gap-4 flex-grow">
+        <div class="flex justify-between items-center px-8 py-4 border-b border-white/10 backdrop-blur-sm">
+          <p></p>
+          <div class="flex flex-row gap-x-2">
+            <a
+              id="login-button"
+              href="/login"
+              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
+            >
+              Login
+            </a>
+            <a
+              id="register-button"
+              href="/register"
+              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
+            >
+              Register
+            </a>
+
+          </div>
+          <div id="logged-in" class="hidden flex-row items-center gap-4">
+            <p id="hello-username">Hello!</p>
+            <a
+              href="/logout"
+              class="px-4 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 transition"
+            >
+              Logout
+            </a>
+          </div>
+        </div>
+
+        <div class="h-full mx-8 overflow-y-auto pb-16">
+          <h1 class="mb-4">Hello! Welcome to Spleef 😊</h1>
+
+          <div class="flex flex-col gap-2 mb-8 pr-8">
+            <p class="text-lg text-gray-300">
+              instructions?
+            </p>
+            <img src="/images" alt="A picture?" class="rounded-lg shadow-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+      lucide.createIcons();
+
+      async function main() {
+        const userProfile = await (await fetch("/api/users/@me")).json();
+        const loginButton = document.getElementById("login-button");
+        const registerButton = document.getElementById("register-button");
+        const loggedIn = document.getElementById("logged-in");
+        const myUsername = document.getElementById("hello-username");
+
+        if (userProfile.id) {
+          loginButton.style.display = "none";
+          registerButton.style.display = "none";
+          loggedIn.style.display = "flex";
+          myUsername.innerText = `Hello ${userProfile.username}!`;
+        } else {
+          loginButton.style.display = "block";
+          registerButton.style.display = "block";
+          loggedIn.style.display = "none";
+        }
+      }
+
+      main();
+    </script>
+  </body>
+</html>
