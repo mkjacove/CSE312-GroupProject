@@ -34,15 +34,17 @@ def register():
 
         print(username)
         print(password)
+        #^Tested getting the username & password
 
         if users_collection.find_one({"username": username}):
             print("❌ Username already exists")
-            abort(401)
+            abort(401)  #abort 401 quite literally just sets the code to 401 unauthorized, I think.
             return "error, username already exists!"
+
 
         hashed_password = generate_password_hash(password)
         users_collection.insert_one({"username": username, "password": hashed_password})
 
         print(f"✅ Registered user: {username}")
-        return "User is registered now!"
+        return "User is registered now!"    #This should return a 200 ok response for the frontend to handle.
     return render_template("register.html")

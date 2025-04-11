@@ -45,6 +45,7 @@
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Register</h2>
       <form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">
+        <!--^basically, when the form submits, use the custom function with an event as a parameter-->
         <input
           type="text"
           id="username"
@@ -73,24 +74,34 @@
 <script>
 
   function handle_submit(event) {
+    //for some reason it needs this event as a parameter, otherwise it can't handle the form submission
     event.preventDefault();
+    //this cancels out any default behavior that would've been used in its place.
 
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
+    //gets the username & password by their ids, had to add an id and password parameter in
 
     const formData = new FormData(event.target);
-
+    //this is apparently the recommended way (by chatgpt) in order to grab the form data, and it works.
+    //I believe it just quite literally grabs the form data and turns it into a URL encoded string.
     let urlEncodedData = new URLSearchParams(formData).toString();
 
     console.log("message is sending now!")
+    //^test message
     fetch('/register', {
       method: 'POST',
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: urlEncodedData
+      //^The fetch function is how javascript sends its http requests to wherever it wants. It needs
+      //to take a url (path), and you just specify the method, headers, & body. I tried using
+      //a json object at first, but it didn't work out too well, so I'm using url encoded strings.
     })
     .then(response => {
+      //Once the backend returns its response, this is how it's handled in the frontend. You can make the
+      //frontend execute certain behavior based on its response, catch errors, etc.
       if (response.status == 401) {
         console.log("Registration failed, this is not ok!")
       } else {
@@ -98,6 +109,9 @@
       }
     })
     console.log(response.status)
+    //^also test message
     window.location.href = "/";
+    //^this is to take the user to wherever after everything is done. In this case, since the path
+    //to take the user to is "/", it will take them home!
   }
 </script>
