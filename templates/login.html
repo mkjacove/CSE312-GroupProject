@@ -44,9 +44,10 @@
   <body class="flex items-center justify-center min-h-screen">
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
-      <form action="/handle_login" method="POST" class="flex flex-col gap-4" id="loginform">
+      <form action="/login" method="POST" class="flex flex-col gap-4" id="loginform">
         <input
           type="text"
+          id="username"
           name="username"
           placeholder="Username"
           required
@@ -54,6 +55,7 @@
         />
         <input
           type="password"
+          id="password"
           name="password"
           placeholder="Password"
           required
@@ -73,6 +75,21 @@
 
 <!--NOTE: Tried messing around a bit with the script, but for some reason the server refuses to take-->
 <!--a request on POST "/login", so I will have to change the location of where that request gets sent to.-->
-<!--<script type="module">-->
+<script type="module">
+  // Select the button element
+    const loginform = document.getElementById('loginform');
 
-<!--</script>-->
+    loginform.addEventListener('submit', async () => {
+
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      const body = {"username": username, "password": password}
+      const response = await fetch("https://example.org/post", {
+        method: "POST",
+        body: body
+      });
+      window.location.href = "/";
+    });
+
+</script>

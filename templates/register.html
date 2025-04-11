@@ -44,18 +44,18 @@
   <body class="flex items-center justify-center min-h-screen">
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Register</h2>
-      <form method="POST" class="flex flex-col gap-4">
+      <form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">
         <input
           type="text"
+          id="username"
           name="username"
-          placeholder="Username"
           required
           class="p-2 rounded-md"
         />
         <input
           type="password"
+          id="password"
           name="password"
-          placeholder="Password"
           required
           class="p-2 rounded-md"
         />
@@ -63,9 +63,38 @@
           type="submit"
           class="bg-gray-700 hover:bg-gray-600 transition-colors text-white py-2 rounded-xl"
         >
-          Register
+          Click me!
         </button>
       </form>
     </div>
   </body>
 </html>
+
+<script>
+
+  function handle_submit(event) {
+    event.preventDefault();
+
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+
+    const body = {username: username, password: password}
+    console.log("message is sending now!")
+    fetch('/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
+    .then(response => {
+      if (response.status == 401) {
+        console.log("Registration failed, this is not ok!")
+      } else {
+        console.log("Registration success, cool!")
+      }
+    })
+    console.log(response.status)
+    //window.location.href = "/";
+  }
+</script>

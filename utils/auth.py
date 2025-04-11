@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import users_collection
 from flask import session
@@ -30,13 +30,17 @@ def register():
         username = request.form.get("username")
         password = request.form.get("password")
 
+        print(username)
+        print(password)
+
         if users_collection.find_one({"username": username}):
             print("❌ Username already exists")
-            return render_template("register.html", error="Username already exists")
+            abort(401)
+            return "error, username already exists!"
 
         hashed_password = generate_password_hash(password)
         users_collection.insert_one({"username": username, "password": hashed_password})
 
         print(f"✅ Registered user: {username}")
-        return redirect(url_for("auth.login"))
+        return "User is registered now!"
     return render_template("register.html")
