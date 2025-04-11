@@ -44,7 +44,7 @@
   <body class="flex items-center justify-center min-h-screen">
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
-      <form action="/login" method="POST" class="flex flex-col gap-4" id="loginform">
+      <form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">
         <input
           type="text"
           id="username"
@@ -75,21 +75,45 @@
 
 <!--NOTE: Tried messing around a bit with the script, but for some reason the server refuses to take-->
 <!--a request on POST "/login", so I will have to change the location of where that request gets sent to.-->
-<script type="module">
-  // Select the button element
-    const loginform = document.getElementById('loginform');
+<script>
 
-    loginform.addEventListener('submit', async () => {
+  function handle_submit(event) {
+    //for some reason it needs this event as a parameter, otherwise it can't handle the form submission
+    event.preventDefault();
+    //this cancels out any default behavior that would've been used in its place.
 
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    //gets the username & password by their ids, had to add an id and password parameter in
 
-      const body = {"username": username, "password": password}
-      const response = await fetch("https://example.org/post", {
-        method: "POST",
-        body: body
+    const formData = new FormData(event.target);
+    //this is apparently the recommended way (by chatgpt) in order to grab the form data, and it works.
+    //I believe it just quite literally grabs the form data and turns it into a URL encoded string.
+    let urlEncodedData = new URLSearchParams(formData).toString();
+
+
+    fetch('/login', {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: urlEncodedData
+      //^The fetch function is how javascript sends its http requests to wherever it wants. It needs
+      //to take a url (path), and you just specify the method, headers, & body. I tried using
+      //a json object at first, but it didn't work out too well, so I'm using url encoded strings.
+    })
+    .then((response) => {
+        if (!response.ok) {
+          return response.text().then((error) => {
+            throw new Error(error);
+          });
+        }
+
+        //Go to login page is signup was successful
+        window.location.href = "/";
+      })
+      .catch((error) => {
+        alert("There was an error during the login; invalid credentials")
       });
-      window.location.href = "/";
-    });
-
+  }
 </script>
