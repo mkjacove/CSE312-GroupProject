@@ -16,6 +16,7 @@ def login():
         user = users_collection.find_one({"username": username})
         if user and check_password_hash(user["password"], password):
             print(f"✅ Logged in as {username}")
+            session.permanent = True
             session["username"] = user["username"]
             return redirect(url_for("home"))
         else:

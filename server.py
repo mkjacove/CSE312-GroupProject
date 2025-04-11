@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from flask import Flask, request, render_template, jsonify, session
 from utils.auth import auth_bp
 
@@ -5,6 +7,9 @@ from utils.auth import auth_bp
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
 app.secret_key = "very_secret_key"
+app.permanent_session_lifetime = timedelta(days=1)
+app.config.update(SESSION_COOKIE_HTTPONLY=True)
+
 
 @app.route("/")
 def home():
