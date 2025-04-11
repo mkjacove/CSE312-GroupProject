@@ -18,10 +18,10 @@ def login():
             print(f"✅ Logged in as {username}")
             session.permanent = True
             session["username"] = user["username"]
-            return redirect(url_for("home"))
+            return "logged in"
         else:
             print("❌ Invalid login")
-            return render_template("login.html", error="Invalid credentials")
+            abort(401)
 
     return render_template("login.html")
 
@@ -29,20 +29,19 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+
         username = request.form.get("username")
         password = request.form.get("password")
 
         if users_collection.find_one({"username": username}):
             print("❌ Username already exists")
-            return render_template("register.html", error="Username already exists")
-
-        # TODO: add check for password strength here
+            abort(401)  # abort 401 quite literally just sets the code to 401 unauthorized, I think.
 
         hashed_password = generate_password_hash(password)
         users_collection.insert_one({"username": username, "password": hashed_password})
 
         print(f"✅ Registered user: {username}")
-        return redirect(url_for("auth.login"))
+        return "User is registered now!"  # This should return a 200 ok response for the frontend to handle.
     return render_template("register.html")
 
 
