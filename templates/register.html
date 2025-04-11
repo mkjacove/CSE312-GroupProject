@@ -78,14 +78,17 @@
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    const body = {username: username, password: password}
+    const formData = new FormData(event.target);
+
+    let urlEncodedData = new URLSearchParams(formData).toString();
+
     console.log("message is sending now!")
     fetch('/register', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: JSON.stringify(body)
+      body: urlEncodedData
     })
     .then(response => {
       if (response.status == 401) {
@@ -95,6 +98,6 @@
       }
     })
     console.log(response.status)
-    //window.location.href = "/";
+    window.location.href = "/";
   }
 </script>

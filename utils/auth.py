@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import users_collection
 from flask import session
+import json
 
 auth_bp = Blueprint("auth", __name__, url_prefix="")
 
@@ -27,6 +28,7 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+
         username = request.form.get("username")
         password = request.form.get("password")
 
