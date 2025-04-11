@@ -44,19 +44,22 @@
   <body class="flex items-center justify-center min-h-screen">
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Register</h2>
-      <form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">
-        <!--^basically, when the form submits, use the custom function with an event as a parameter-->
+      <!--<form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">-->
+      <!-- ^ commented out for now, breaks redirect to login when registering -->
+      <!-- id="username" -->
+      <!-- ^ add back to input fields when handle_submit fixed -->
+      <form method="POST" class="flex flex-col gap-4">
         <input
           type="text"
-          id="username"
           name="username"
+          placeholder="Username"
           required
           class="p-2 rounded-md"
         />
         <input
           type="password"
-          id="password"
           name="password"
+          placeholder="Password"
           required
           class="p-2 rounded-md"
         />
@@ -64,7 +67,7 @@
           type="submit"
           class="bg-gray-700 hover:bg-gray-600 transition-colors text-white py-2 rounded-xl"
         >
-          Click me!
+          Register
         </button>
       </form>
     </div>

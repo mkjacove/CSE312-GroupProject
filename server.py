@@ -1,5 +1,6 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify, session
 from utils.auth import auth_bp
+
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
@@ -26,6 +27,12 @@ def achievements():
 @app.route("/direct-messaging")
 def messaging():
     return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
+
+@app.route("/api/users/@me")
+def get_current_user():
+    if "username" in session:
+        return jsonify({"id": True, "username": session["username"]})
+    return jsonify({"id": None})
 
 # @app.route("/login", methods=['GET'])
 # def login():
