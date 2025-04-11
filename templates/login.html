@@ -44,7 +44,7 @@
   <body class="flex items-center justify-center min-h-screen">
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
-      <form method="POST" class="flex flex-col gap-4">
+      <form action="/handle_login" method="POST" class="flex flex-col gap-4" id="loginform">
         <input
           type="text"
           name="username"
@@ -69,3 +69,10 @@
     </div>
   </body>
 </html>
+
+
+<!--NOTE: Tried messing around a bit with the script, but for some reason the server refuses to take-->
+<!--a request on POST "/login", so I will have to change the location of where that request gets sent to.-->
+<!--<script type="module">-->
+
+<!--</script>-->

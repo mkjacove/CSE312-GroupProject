@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, request, render_template
 from utils.auth import auth_bp
 
 app = Flask(__name__)
@@ -25,8 +25,23 @@ def achievements():
     return render_template("achievements.html")
 @app.route("/direct-messaging")
 def messaging():
-    return render_template("direct-messaging.html")
+    return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
 
+@app.route("/login", methods=['GET'])
+def login():
+    # if request.method == 'GET':
+    print("this is a test")
+    return render_template("login.html")
+    # elif request.method == 'POST':
+    #     print("this is also a test")
+    #     print(request.form)  # needed to import request with flask to access form content
+    #     return "message received!"
+
+@app.route("/handle_login", methods=['POST'])
+def handle_login():
+    print("this is also a test")
+    print(request.form)  # needed to import request with flask to access form content
+    return "message received!"
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8080)
+    app.run(host="0.0.0.0", port=8080)
