@@ -27,7 +27,6 @@
         h1 {
           @apply text-4xl font-bold;
         }
-
         input {
           @apply text-black focus:outline-none focus:ring-0;
         }
@@ -39,12 +38,27 @@
         background-color: #021217;
         color: white;
       }
+      /* Error message box styling */
+      .error-message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: rgba(255, 0, 0, 0.85);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        display: none;
+        z-index: 1000;
+      }
     </style>
   </head>
   <body class="flex items-center justify-center min-h-screen">
+    <!-- Error Message Container -->
+    <div id="error-message" class="error-message"></div>
     <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
       <h2 class="text-2xl font-semibold mb-6 text-center">Login</h2>
-      <form onSubmit="handle_submit(event)" class="flex flex-col gap-4" id="registerform">
+      <form onsubmit="handleSubmit(event)" class="flex flex-col gap-4" id="loginForm">
         <input
           type="text"
           id="username"
@@ -69,51 +83,45 @@
         </button>
       </form>
     </div>
+    <script>
+      function handleSubmit(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        let urlEncodedData = new URLSearchParams(formData).toString();
+
+        fetch('/login', {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          redirect: "manual", // prevent auto-following of redirects if issued by the server
+          body: urlEncodedData
+        })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorText = await response.text();
+            showError(errorText || "Invalid credentials. Please try again.");
+            throw new Error(errorText);
+          }
+          hideError();
+          // Successful login; redirect to homepage with a success flag.
+          window.location.href = "/?loginSuccess=1";
+        })
+        .catch((error) => {
+          console.error("Login error:", error);
+        });
+      }
+
+      function showError(message) {
+        const errorBox = document.getElementById("error-message");
+        errorBox.innerText = message;
+        errorBox.style.display = "block";
+      }
+
+      function hideError() {
+        const errorBox = document.getElementById("error-message");
+        errorBox.style.display = "none";
+      }
+    </script>
   </body>
 </html>
-
-
-<!--NOTE: Tried messing around a bit with the script, but for some reason the server refuses to take-->
-<!--a request on POST "/login", so I will have to change the location of where that request gets sent to.-->
-<script>
-
-  function handle_submit(event) {
-    //for some reason it needs this event as a parameter, otherwise it can't handle the form submission
-    event.preventDefault();
-    //this cancels out any default behavior that would've been used in its place.
-
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-    //gets the username & password by their ids, had to add an id and password parameter in
-
-    const formData = new FormData(event.target);
-    //this is apparently the recommended way (by chatgpt) in order to grab the form data, and it works.
-    //I believe it just quite literally grabs the form data and turns it into a URL encoded string.
-    let urlEncodedData = new URLSearchParams(formData).toString();
-
-
-    fetch('/login', {
-      method: 'POST',
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: urlEncodedData
-      //^The fetch function is how javascript sends its http requests to wherever it wants. It needs
-      //to take a url (path), and you just specify the method, headers, & body. I tried using
-      //a json object at first, but it didn't work out too well, so I'm using url encoded strings.
-    })
-    .then((response) => {
-        if (!response.ok) {
-          return response.text().then((error) => {
-            throw new Error(error);
-          });
-        }
-
-        //Go to login page is signup was successful
-        window.location.href = "/";
-      })
-      .catch((error) => {
-        alert("There was an error during the login; invalid credentials")
-      });
-  }
-</script>

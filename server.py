@@ -1,8 +1,7 @@
 from datetime import timedelta
-
 from flask import Flask, request, render_template, jsonify, session
 from utils.auth import auth_bp
-
+#testaccount, theone, pass = T1h2e3%%One
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)

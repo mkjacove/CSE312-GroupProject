@@ -175,5 +175,54 @@
 
       main();
     </script>
+
+    <!-- Place this script at the bottom of your homepage body, after the alert container element -->
+<script>
+  // Utility function to get query parameters
+  function getQueryParams() {
+    let params = {};
+    window.location.search.substring(1).split("&").forEach(function (pair) {
+      if (pair) {
+        let parts = pair.split("=");
+        params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
+      }
+    });
+    return params;
+  }
+
+  // Function to remove a parameter from the URL without reloading the page
+  function removeQueryParameter(param) {
+    const url = new URL(window.location);
+    url.searchParams.delete(param);
+    window.history.replaceState(null, '', url);
+  }
+
+  // Function to display a success alert
+  function showSuccessAlert(message) {
+    const alertContainer = document.getElementById("alert-container");
+    const alertBox = document.createElement("div");
+    alertBox.className = "bg-green-500 text-white p-4 rounded shadow";
+    alertBox.innerText = message;
+
+    // Append the alert to the container
+    alertContainer.appendChild(alertBox);
+
+    // Optionally, remove the alert after a few seconds
+    setTimeout(() => {
+      alertBox.classList.add("opacity-0", "transition-opacity", "duration-500");
+      setTimeout(() => {
+        alertContainer.removeChild(alertBox);
+      }, 500);
+    }, 3000);
+  }
+
+  // Check for the loginSuccess query parameter
+  const params = getQueryParams();
+  if (params.loginSuccess === "1") {
+    showSuccessAlert("Successfully logged in!");
+    removeQueryParameter("loginSuccess");
+  }
+  </script>
+
   </body>
 </html>
