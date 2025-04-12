@@ -1,125 +1,64 @@
-<!--play.html -->
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>312game.com - Game</title>
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: "#0f172a", // slate-900
-              accent: "#38bdf8",  // sky-400
-            },
-          },
-        },
-      };
-    </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        body {
-          @apply font-[Poppins] text-white bg-gradient-to-br from-primary to-gray-800;
-        }
-
-        h1 {
-          @apply text-4xl font-bold;
-        }
-
-        input,
-        textarea {
-          @apply text-black focus:outline-none focus:ring-2 focus:ring-accent;
-        }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>312game.com - Play</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #111;
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+      }
+      /* Container holds both canvases */
+      #canvas-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        background-color: #222;
+      }
+      /* Fullscreen button styling */
+      #fullscreen-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #38bdf8;
+        border: none;
+        padding: 0.5rem 1rem;
+        color: #111;
+        font-weight: bold;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 20;
+      }
+      /* Mini map styling: fixed square on the top-left */
+      #miniMapCanvas {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        border: 1px solid #ccc;
+        background-color: #fff;
+        width: 200px;
+        height: 200px;
+        z-index: 15;
+      }
+      /* Main game canvas will fill the container */
+      #gameCanvas {
+        display: block;
       }
     </style>
-    <link rel="stylesheet" href="/static/css/play.css" />
   </head>
   <body>
-    <div class="flex flex-row w-full h-screen">
-      <!-- Sidebar -->
-      <navbar class="flex flex-col px-10 py-8 min-w-[19rem] h-full border-r border-white/10 bg-glass backdrop-blur-md shadow-md rounded-tr-2xl rounded-br-2xl">
-        <a href="/">
-          <h1 class="mb-8 text-accent">312game.com</h1>
-        </a>
-        <div class="flex flex-col gap-3">
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="house"></i>
-            <a href="/">Home</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="smile"></i>
-            <a href="/play">Play Game</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="trophy"></i>
-            <a href="/leaderboard">Leaderboard</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="chart-column"></i>
-            <a href="/player-statistics">Player Statistics</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="award"></i>
-            <a href="/achievements">Achievements</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="circle-user-round"></i>
-            <a href="/change-avatar">Change Avatar</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="mail"></i>
-            <a href="/direct-messaging">Direct Messaging</a>
-          </div>
-        </div>
-      </navbar>
-
-      <!-- Content Section -->
-      <div class="flex flex-col gap-4 flex-grow">
-        <div class="justify-between flex items-center px-8 py-2 border-b-2">
-          <p></p>
-
-          <div class="flex flex-row gap-x-2">
-            <a
-              id="login-button"
-              href="/login"
-              class="ml-auto px-3 py-1 text-sm rounded-xl bg-gray-700"
-            >
-              Login
-            </a>
-            <a
-              id="register-button"
-              href="/register"
-              class="ml-auto px-3 py-1 text-sm rounded-xl bg-gray-700"
-            >
-              Register
-            </a>
-          </div>
-          <div id="logged-in" class="flex flex-row items-center gap-4">
-            <p id="hello-username">Hello ME_ROUTE_NOT_DONE!</p>
-
-            <a href="/logout" class="px-3 py-1 text-sm rounded-xl bg-gray-700">
-              Logout
-            </a>
-          </div>
-        </div>
-
-        <!-- Empty Content Area for Game -->
-        <div class="body-container">
-          <div id="grid-container" class ="grid-container">
-              <!-- Grid cells will be dynamically created here -->
-          </div>
-        </div>
-      </div>
+    <div id="canvas-container">
+      <button id="fullscreen-btn">Fullscreen</button>
+      <!-- Mini map canvas (remains a fixed 200x200 square) -->
+      <canvas id="miniMapCanvas" width="200" height="200"></canvas>
+      <!-- Main game canvas (size set in JS) -->
+      <canvas id="gameCanvas"></canvas>
     </div>
 
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -148,6 +87,8 @@
 
       main();
     </script>
+    <script src="/static/js/alertManager.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="/static/js/play.js"></script>
   </body>
 </html>

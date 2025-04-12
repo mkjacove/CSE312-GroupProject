@@ -1,68 +1,226 @@
-// Play.js
+// ----------------------------
+// Configuration and Global Setup
+// ----------------------------
 
-const playerColor = "#" + Math.floor(Math.random() * 16777215).toString(16);
+// Main game canvas and context.
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-document.addEventListener("DOMContentLoaded", function () {
-  const grid = document.getElementById("grid-container");
-  const gridSize = 10;
-  let playerPosition = { x: 0, y: 0 };
+// Resize main canvas to fill entire viewport.
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-  // Create grid cells
-  for (let i = 0; i < gridSize * gridSize; i++) {
-    const cell = document.createElement("div");
-    cell.classList.add("grid-cell");
-    grid.appendChild(cell);
+// Mini map canvas and context – fixed square (200x200).
+const miniMapCanvas = document.getElementById("miniMapCanvas");
+const miniCtx = miniMapCanvas.getContext("2d");
+
+// Grid settings.
+const gridCols = 500;
+const gridRows = 500;
+const tileSize = 50;           // Each tile is 50x50 pixels.
+const gridWidth = gridCols * tileSize;
+const gridHeight = gridRows * tileSize;
+
+// Player settings.
+// The player occupies exactly one tile.
+const playerSize = tileSize;
+let playerX = gridWidth / 2;  // Start at the center of the grid.
+let playerY = gridHeight / 2;
+const playerSpeed = 5;
+
+// Generate a random color for the player's main representation.
+function getRandomColor() {
+  const letters = "0123456789ABCDEF";
+  let color = "#";
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
   }
+  return color;
+}
+let playerColor = getRandomColor();
 
-  const updatePlayerPosition = () => {
-    const cells = grid.querySelectorAll(".grid-cell");
+// Camera/viewport settings.
+let cameraX = 0;
+let cameraY = 0;
 
-    // Reset all cells
-    cells.forEach(cell => {
-      cell.classList.remove("player");
-      cell.style.backgroundColor = "#4a5568"; // Your default grid cell color
-    });
+// Keyboard input tracking.
+let keys = {};
+document.addEventListener("keydown", (e) => { keys[e.key] = true; });
+document.addEventListener("keyup", (e) => { keys[e.key] = false; });
 
-    const index = playerPosition.y * gridSize + playerPosition.x;
+// ----------------------------
+// Tick System for TNT Run Logic
+// ----------------------------
 
-    // Add the "player" class to the current cell
-    const playerCell = cells[index];
-    playerCell.style.backgroundColor = playerColor;
-    playerCell.classList.add("player");
-};
+// We'll track triggered tiles in an object keyed as "col,row".
+// Each entry holds an object: { state, timer } where:
+//   state: 1 = "red" (active trigger), 2 = "dead" (tile disappeared, drawn black)
+//   timer: counts down ticks.
+let tileStates = {};
 
-  // Initial player position
-  updatePlayerPosition();
+// Duration (in ticks) the tile remains red before turning dead.
+// 1 second at 20 ticks-per-second = 20 ticks.
+const RED_DURATION = 20;
 
-  document.addEventListener("keydown", (event) => {
-    const key = event.key.toLowerCase(); // normalize to lowercase
-    switch (key) {
-      case "w": // up
-        if (playerPosition.y > 0) {
-          playerPosition.y -= 1;
-          updatePlayerPosition();
-        }
-        break;
-      case "a": // left
-        if (playerPosition.x > 0) {
-          playerPosition.x -= 1;
-          updatePlayerPosition();
-        }
-        break;
-      case "s": // down
-        if (playerPosition.y < gridSize - 1) {
-          playerPosition.y += 1;
-          updatePlayerPosition();
-        }
-        break;
-      case "d": // right
-        if (playerPosition.x < gridSize - 1) {
-          playerPosition.x += 1;
-          updatePlayerPosition();
-        }
-        break;
+// Tick function runs 20 times per second.
+function tick() {
+  // Identify the tile currently under the player's center.
+  let playerTileCol = Math.floor(playerX / tileSize);
+  let playerTileRow = Math.floor(playerY / tileSize);
+  let key = playerTileCol + "," + playerTileRow;
+  if (!tileStates[key]) {
+    // Mark this tile as triggered (red) if not already triggered.
+    tileStates[key] = { state: 1, timer: RED_DURATION };
+  }
+  
+  // Update all triggered tiles.
+  for (let tKey in tileStates) {
+    let tile = tileStates[tKey];
+    if (tile.state === 1) {  // In the red phase.
+      tile.timer--;
+      if (tile.timer <= 0) {
+        tile.state = 2;    // Transition to dead (black).
+      }
     }
-  });
+    // Once in state 2, the tile remains dead (black).
+  }
+}
+// Start tick system at 20 TPS.
+setInterval(tick, 50);
+
+// ----------------------------
+// Fullscreen Setup
+// ----------------------------
+// Apply fullscreen to the container so that both canvases remain visible.
+document.getElementById("fullscreen-btn").addEventListener("click", () => {
+  const container = document.getElementById("canvas-container");
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    container.requestFullscreen().catch(err => {
+      console.error(`Error attempting fullscreen: ${err.message}`);
+    });
+  }
 });
 
+// ----------------------------
+// Game Loop and Rendering Routines
+// ----------------------------
 
+function update() {
+  let dx = 0, dy = 0;
+  if (keys["ArrowUp"] || keys["w"]) dy -= playerSpeed;
+  if (keys["ArrowDown"] || keys["s"]) dy += playerSpeed;
+  if (keys["ArrowLeft"] || keys["a"]) dx -= playerSpeed;
+  if (keys["ArrowRight"] || keys["d"]) dx += playerSpeed;
+  
+  let newPlayerX = playerX + dx;
+  let newPlayerY = playerY + dy;
+  newPlayerX = Math.max(0, Math.min(newPlayerX, gridWidth - playerSize));
+  newPlayerY = Math.max(0, Math.min(newPlayerY, gridHeight - playerSize));
+  playerX = newPlayerX;
+  playerY = newPlayerY;
+  
+  const viewWidth = canvas.width;
+  const viewHeight = canvas.height;
+  const margin = 100;  // Margin to auto-scroll.
+  
+  if (playerX - cameraX < margin) {
+    cameraX = Math.max(0, playerX - margin);
+  } else if (playerX - cameraX > viewWidth - margin - playerSize) {
+    cameraX = Math.min(gridWidth - viewWidth, playerX - viewWidth + margin + playerSize);
+  }
+  if (playerY - cameraY < margin) {
+    cameraY = Math.max(0, playerY - margin);
+  } else if (playerY - cameraY > viewHeight - margin - playerSize) {
+    cameraY = Math.min(gridHeight - viewHeight, playerY - viewHeight + margin + playerSize);
+  }
+}
+
+function draw() {
+  const viewWidth = canvas.width;
+  const viewHeight = canvas.height;
+  
+  // Draw visible grid tiles.
+  const startCol = Math.floor(cameraX / tileSize);
+  const endCol = Math.min(gridCols, Math.floor((cameraX + viewWidth) / tileSize) + 1);
+  const startRow = Math.floor(cameraY / tileSize);
+  const endRow = Math.min(gridRows, Math.floor((cameraY + viewHeight) / tileSize) + 1);
+  
+  // For each visible tile, determine its color.
+  for (let row = startRow; row < endRow; row++) {
+    for (let col = startCol; col < endCol; col++) {
+      const tileX = col * tileSize - cameraX;
+      const tileY = row * tileSize - cameraY;
+      let key = col + "," + row;
+      // Default tile (active) is white.
+      let fillColor = "#ffffff";
+      if (tileStates[key]) {
+        if (tileStates[key].state === 1) {
+          fillColor = "#FF0000"; // red when triggered.
+        } else if (tileStates[key].state === 2) {
+          fillColor = "#000000"; // dead blocks are black.
+        }
+      }
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(tileX, tileY, tileSize, tileSize);
+      
+      // Draw grid lines.
+      ctx.strokeStyle = "#cccccc";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+    }
+  }
+  
+  // Draw the player as a circle.
+  const playerScreenX = playerX - cameraX + playerSize / 2;
+  const playerScreenY = playerY - cameraY + playerSize / 2;
+  ctx.fillStyle = playerColor;
+  ctx.beginPath();
+  ctx.arc(playerScreenX, playerScreenY, playerSize / 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // ----------------------------
+  // Draw the Mini Map
+  // ----------------------------
+  const miniWidth = miniMapCanvas.width;
+  const miniHeight = miniMapCanvas.height;
+  const scaleX = miniWidth / gridWidth;
+  const scaleY = miniHeight / gridHeight;
+  
+  // Clear and fill mini map.
+  miniCtx.fillStyle = "#ffffff";
+  miniCtx.fillRect(0, 0, miniWidth, miniHeight);
+  
+  // Draw triggered tiles in the mini map.
+  for (let tKey in tileStates) {
+    let parts = tKey.split(",");
+    let col = parseInt(parts[0]);
+    let row = parseInt(parts[1]);
+    let tileState = tileStates[tKey].state;
+    let miniFill = (tileState === 1) ? "#FF0000" : "#000000";
+    miniCtx.fillStyle = miniFill;
+    miniCtx.fillRect(col * tileSize * scaleX, row * tileSize * scaleY, tileSize * scaleX, tileSize * scaleY);
+  }
+  
+  // Draw the player's position on the mini map as red.
+  miniCtx.fillStyle = "#FF0000";
+  miniCtx.fillRect(playerX * scaleX, playerY * scaleY, tileSize * scaleX, tileSize * scaleY);
+  
+  // Draw the main viewport on the mini map with a red rectangle.
+  miniCtx.strokeStyle = "#FF0000";
+  miniCtx.lineWidth = 1;
+  miniCtx.strokeRect(cameraX * scaleX, cameraY * scaleY, viewWidth * scaleX, viewHeight * scaleY);
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();

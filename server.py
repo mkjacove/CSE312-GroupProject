@@ -6,6 +6,8 @@ from flask import Flask, request, render_template, jsonify, session, redirect, u
 from utils.auth import auth_bp
 from utils.db import users_collection
 
+#testaccount, theone, pass = T1h2e3%%One
+
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
 app.secret_key = "very_secret_key"
