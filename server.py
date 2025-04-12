@@ -39,21 +39,9 @@ def get_current_user():
         return jsonify({"id": True, "username": session["username"]})
     return jsonify({"id": None})
 
-# @app.route("/login", methods=['GET'])
-# def login():
-#     # if request.method == 'GET':
-#     print("this is a test")
-#     return render_template("login.html")
-#     # elif request.method == 'POST':
-#     #     print("this is also a test")
-#     #     print(request.form)  # needed to import request with flask to access form content
-#     #     return "message received!"
-#
-# @app.route("/handle_login", methods=['POST'])
-# def handle_login():
-#     print("this is also a test")
-#     print(request.form)  # needed to import request with flask to access form content
-#     return "message received!"
+@app.route("/canvas")
+def canvas():
+    return render_template("canvas.html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
