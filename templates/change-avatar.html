@@ -118,55 +118,57 @@
     <h1 class="font-bold">Change Avatar</h1>
 
     <div class="flex items-center justify-center mb-4">
-      <img
-        id="current-avatar"
-        src="/images/user.webp"
-        alt="Current Avatar"
-        class="w-32 h-32 rounded-full border-2 border-gray-500"
-      />
+
+<img
+  id="current-avatar"
+  src="{{ url_for('serve_image', filename=session.get('avatar', 'user.webp')) }}"
+  alt="Current Avatar"
+  class="w-32 h-32 rounded-full border-2 border-gray-500"
+/>
     </div>
 
-    <form id="avatar-form" class="flex flex-col gap-6">
-      <div class="flex flex-col gap-2">
-        <label class="text-sm">Profile Picture</label>
-        <div
-          id="file-drop-area"
-          class="relative w-full h-32 border-2 border-dashed border-gray-500 rounded-xl flex items-center justify-center cursor-pointer hover:border-gray-400 group"
-        >
-          <input
-            type="file"
-            id="avatar-file"
-            name="avatar"
-            class="hidden"
-            accept=".png,.jpg,.jpeg,.gif"
-            required
-          />
-          <div
-            id="upload-placeholder"
-            class="text-gray-400 group-hover:text-gray-300"
-          >
-            Click to select an image (PNG, JPG, or GIF)
-          </div>
-          <div id="file-info" class="hidden flex items-center gap-2">
-            <span id="filename" class="text-sm"></span>
-            <button
-              type="button"
-              id="remove-file"
-              class="text-gray-400 hover:text-gray-300"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        class="w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700"
+<form id="avatar-form" action="/change-avatar" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6">
+  <div class="flex flex-col gap-2">
+    <label class="text-sm">Profile Picture</label>
+    <div
+      id="file-drop-area"
+      class="relative w-full h-32 border-2 border-dashed border-gray-500 rounded-xl flex items-center justify-center cursor-pointer hover:border-gray-400 group"
+    >
+      <input
+        type="file"
+        id="avatar-file"
+        name="avatar"
+        class="hidden"
+        accept=".png,.jpg,.jpeg,.gif"
+        required
+      />
+      <div
+        id="upload-placeholder"
+        class="text-gray-400 group-hover:text-gray-300"
       >
-        Update Avatar
-      </button>
-    </form>
+        Click to select an image (PNG, JPG, or GIF)
+      </div>
+      <div id="file-info" class="hidden flex items-center gap-2">
+        <span id="filename" class="text-sm"></span>
+        <button
+          type="button"
+          id="remove-file"
+          class="text-gray-400 hover:text-gray-300"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <button
+    type="submit"
+    class="w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700"
+  >
+    Update Avatar
+  </button>
+</form>
+
   </div>
 </div>
             </div>
@@ -228,7 +230,6 @@
     uploadPlaceholder.classList.remove("hidden");
   });
 </script>
-    <script src="/static/js/alertManager.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   </body>
 </html>

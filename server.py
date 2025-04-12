@@ -1,7 +1,10 @@
+import os
 from datetime import timedelta
-from flask import Flask, request, render_template, jsonify, session
+
+import uuid
+from flask import Flask, request, render_template, jsonify, session, redirect, url_for, send_from_directory
 from utils.auth import auth_bp
-#testaccount, theone, pass = T1h2e3%%One
+from utils.db import users_collection
 
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
@@ -13,11 +16,38 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True)
 @app.route("/")
 def home():
     return render_template("home.html")
+@app.route("/change-avatar", methods=["POST"])
+def upload_avatar():
+    if "username" not in session:
+        return redirect(url_for("home", error="not_signed_in"))
+
+    if "avatar" not in request.files:
+        return "No file uploaded", 400
+
+    file = request.files["avatar"]
+    if file.filename == "":
+        return "No selected file", 400
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    unique_name = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join("images", unique_name)
+    file.save(file_path)
+    session["avatar"] = unique_name
+
+    users_collection.update_one({"username": session.get("username")}, {"$set": {"avatar":file_path}})
+    return redirect(url_for("avatar"))
 @app.route("/change-avatar")
 def avatar():
+    if "username" not in session:
+        return redirect(url_for("home", error="not_signed_in"))
     return render_template("change-avatar.html")
+@app.route('/images/<filename>')
+def serve_image(filename):
+    return send_from_directory('images', filename)
 @app.route("/play")
 def play():
+    if "username" not in session:
+        return redirect(url_for("home", error="not_signed_in"))
     return render_template("play.html")
 @app.route("/leaderboard")
 def leaderboard():
@@ -27,20 +57,38 @@ def stats():
     return render_template("player-statistics.html")
 @app.route("/achievements")
 def achievements():
+    if "username" not in session:
+        return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
 @app.route("/direct-messaging")
 def messaging():
+    if "username" not in session:
+        return redirect(url_for("home", error="not_signed_in"))
     return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
-
 @app.route("/api/users/@me")
 def get_current_user():
     if "username" in session:
         return jsonify({"id": True, "username": session["username"]})
     return jsonify({"id": None})
 
-@app.route("/canvas")
-def canvas():
-    return render_template("canvas.html")
+
+
+# @app.route("/login", methods=['GET'])
+# def login():
+#     # if request.method == 'GET':
+#     print("this is a test")
+#     return render_template("login.html")
+#     # elif request.method == 'POST':
+#     #     print("this is also a test")
+#     #     print(request.form)  # needed to import request with flask to access form content
+#     #     return "message received!"
+#
+# @app.route("/handle_login", methods=['POST'])
+# def handle_login():
+#     print("this is also a test")
+#     print(request.form)  # needed to import request with flask to access form content
+#     return "message received!"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
+
