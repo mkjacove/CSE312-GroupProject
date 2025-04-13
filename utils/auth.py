@@ -25,6 +25,7 @@ def login():
             print(f"✅ Logged in as {username}")
             session.permanent = True
             session["username"] = user["username"]
+            session["avatar"] = user.get("avatar", "user.webp")
             return "logged in", 200
         else:
             print("❌ Invalid login")

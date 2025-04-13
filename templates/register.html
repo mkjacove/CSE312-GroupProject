@@ -90,10 +90,10 @@
     <script>
       function handleSubmit(event) {
         event.preventDefault();
-        
+
         const formData = new FormData(event.target);
         let urlEncodedData = new URLSearchParams(formData).toString();
-    
+
         // Prevent automatic redirects
         fetch('/register', {
           method: 'POST',
@@ -119,17 +119,17 @@
           console.error("Error:", error);
         });
       }
-    
+
       function showError(message) {
         const errorBox = document.getElementById("error-message");
         errorBox.innerText = message;
         errorBox.style.display = "block";
       }
-    
+
       function hideError() {
         const errorBox = document.getElementById("error-message");
         errorBox.style.display = "none";
       }
-    </script>    
+    </script>
   </body>
 </html>

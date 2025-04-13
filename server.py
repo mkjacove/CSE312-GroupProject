@@ -32,11 +32,11 @@ def upload_avatar():
 
     ext = os.path.splitext(file.filename)[1].lower()
     unique_name = f"{uuid.uuid4()}{ext}"
-    file_path = os.path.join("images", unique_name)
+    file_path = os.path.join("images/", unique_name)
     file.save(file_path)
     session["avatar"] = unique_name
 
-    users_collection.update_one({"username": session.get("username")}, {"$set": {"avatar":file_path}})
+    users_collection.update_one({"username": session.get("username")}, {"$set": {"avatar":unique_name}})
     return redirect(url_for("avatar"))
 @app.route("/change-avatar")
 def avatar():
@@ -45,7 +45,8 @@ def avatar():
     return render_template("change-avatar.html")
 @app.route('/images/<filename>')
 def serve_image(filename):
-    return send_from_directory('images', filename)
+
+    return send_from_directory('images/', filename)
 @app.route("/play")
 def play():
     if "username" not in session:
@@ -69,8 +70,10 @@ def messaging():
     return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
 @app.route("/api/users/@me")
 def get_current_user():
+    print(session)
     if "username" in session:
-        return jsonify({"id": True, "username": session["username"]})
+        return jsonify({"id": True, "username": session["username"], "avatar": session.get("avatar",
+                                                                                     "user.webp")})
     return jsonify({"id": None})
 
 

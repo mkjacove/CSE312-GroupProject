@@ -140,6 +140,11 @@ function update() {
     cameraY = Math.min(gridHeight - viewHeight, playerY - viewHeight + margin + playerSize);
   }
 }
+let avatarImg = null;
+if (window.PLAYER_AVATAR) {
+  avatarImg = new Image();
+  avatarImg.src = "/images/" + window.PLAYER_AVATAR;
+}
 
 function draw() {
   const viewWidth = canvas.width;
@@ -175,15 +180,29 @@ function draw() {
       ctx.strokeRect(tileX, tileY, tileSize, tileSize);
     }
   }
-  
-  // Draw the player as a circle.
+
+  // Draw the player's avatar as a circle.
   const playerScreenX = playerX - cameraX + playerSize / 2;
   const playerScreenY = playerY - cameraY + playerSize / 2;
+
+  // If the avatar URL is available, draw the image as the player's avatar.
+  if (avatarImg && avatarImg.complete) {
+  const avatarRadius = playerSize / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(playerScreenX, playerScreenY, avatarRadius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(avatarImg, playerScreenX - avatarRadius, playerScreenY - avatarRadius, playerSize, playerSize);
+  ctx.restore();
+} else {
+  // Fallback circle
   ctx.fillStyle = playerColor;
   ctx.beginPath();
   ctx.arc(playerScreenX, playerScreenY, playerSize / 2, 0, Math.PI * 2);
   ctx.fill();
-  
+}
+
   // ----------------------------
   // Draw the Mini Map
   // ----------------------------
@@ -191,11 +210,11 @@ function draw() {
   const miniHeight = miniMapCanvas.height;
   const scaleX = miniWidth / gridWidth;
   const scaleY = miniHeight / gridHeight;
-  
+
   // Clear and fill mini map.
   miniCtx.fillStyle = "#ffffff";
   miniCtx.fillRect(0, 0, miniWidth, miniHeight);
-  
+
   // Draw triggered tiles in the mini map.
   for (let tKey in tileStates) {
     let parts = tKey.split(",");
@@ -206,19 +225,29 @@ function draw() {
     miniCtx.fillStyle = miniFill;
     miniCtx.fillRect(col * tileSize * scaleX, row * tileSize * scaleY, tileSize * scaleX, tileSize * scaleY);
   }
-  
+
   // Draw the player's position on the mini map as red.
   miniCtx.fillStyle = "#FF0000";
   miniCtx.fillRect(playerX * scaleX, playerY * scaleY, tileSize * scaleX, tileSize * scaleY);
-  
+
   // Draw the main viewport on the mini map with a red rectangle.
   miniCtx.strokeStyle = "#FF0000";
   miniCtx.lineWidth = 1;
   miniCtx.strokeRect(cameraX * scaleX, cameraY * scaleY, viewWidth * scaleX, viewHeight * scaleY);
 }
-
 function gameLoop() {
   update();
+  fetch("/api/users/@me")
+  .then(res => res.json())
+  .then(user => {
+    if (user && user.avatar) {
+      window.PLAYER_AVATAR = user.avatar;
+
+      // Load avatar image once user info is available
+      avatarImg = new Image();
+      avatarImg.src = "/images/" + window.PLAYER_AVATAR;
+    }
+  });
   draw();
   requestAnimationFrame(gameLoop);
 }
