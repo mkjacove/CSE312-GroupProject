@@ -145,6 +145,17 @@ if (window.PLAYER_AVATAR) {
   avatarImg = new Image();
   avatarImg.src = "/images/" + window.PLAYER_AVATAR;
 }
+fetch("/api/users/@me")
+  .then(res => res.json())
+  .then(user => {
+    if (user && user.avatar) {
+      window.PLAYER_AVATAR = user.avatar;
+
+      // Load avatar image once user info is available
+      avatarImg = new Image();
+      avatarImg.src = "/images/" + window.PLAYER_AVATAR;
+    }
+  });
 
 function draw() {
   const viewWidth = canvas.width;
@@ -237,17 +248,7 @@ function draw() {
 }
 function gameLoop() {
   update();
-  fetch("/api/users/@me")
-  .then(res => res.json())
-  .then(user => {
-    if (user && user.avatar) {
-      window.PLAYER_AVATAR = user.avatar;
 
-      // Load avatar image once user info is available
-      avatarImg = new Image();
-      avatarImg.src = "/images/" + window.PLAYER_AVATAR;
-    }
-  });
   draw();
   requestAnimationFrame(gameLoop);
 }

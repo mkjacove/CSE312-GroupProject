@@ -70,7 +70,6 @@ def messaging():
     return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
 @app.route("/api/users/@me")
 def get_current_user():
-    print(session)
     if "username" in session:
         return jsonify({"id": True, "username": session["username"], "avatar": session.get("avatar",
                                                                                      "user.webp")})
