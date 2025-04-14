@@ -227,7 +227,7 @@ function draw() {
   // Add the username if it exists
   if (username) {
   ctx.font = "16px Arial";
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "#31e700";
   ctx.textAlign = "center";
   ctx.fillText(username, playerScreenX, playerScreenY - playerSize / 2 - 10);
 }
