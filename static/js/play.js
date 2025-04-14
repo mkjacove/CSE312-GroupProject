@@ -145,6 +145,12 @@ if (window.PLAYER_AVATAR) {
   avatarImg = new Image();
   avatarImg.src = "/images/" + window.PLAYER_AVATAR;
 }
+
+let username = null;
+if(window.PLAYER_USERNAME) {
+  username = window.PLAYER_USERNAME;
+}
+
 fetch("/api/users/@me")
   .then(res => res.json())
   .then(user => {
@@ -155,6 +161,11 @@ fetch("/api/users/@me")
       avatarImg = new Image();
       avatarImg.src = "/images/" + window.PLAYER_AVATAR;
     }
+
+    if (user && user.username) {
+      username = user.username;
+    }
+
   });
 
 function draw() {
@@ -212,6 +223,13 @@ function draw() {
   ctx.beginPath();
   ctx.arc(playerScreenX, playerScreenY, playerSize / 2, 0, Math.PI * 2);
   ctx.fill();
+}
+  // Add the username if it exists
+  if (username) {
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "black";
+  ctx.textAlign = "center";
+  ctx.fillText(username, playerScreenX, playerScreenY - playerSize / 2 - 10);
 }
 
   // ----------------------------
