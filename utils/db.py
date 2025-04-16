@@ -1,5 +1,5 @@
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://localhost:27017/")
+client = MongoClient("mongo")
 db = client["CSE312_Spleef"]
 users_collection = db["users"]
