@@ -14,7 +14,6 @@ app.secret_key = "very_secret_key"
 app.permanent_session_lifetime = timedelta(days=1)
 app.config.update(SESSION_COOKIE_HTTPONLY=True)
 
-
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -80,5 +79,5 @@ def canvas():
     return render_template("canvas.html")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="127.0.0.1", port=8080)
 
