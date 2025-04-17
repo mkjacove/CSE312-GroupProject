@@ -67,11 +67,6 @@ def achievements():
     if "username" not in session:
         return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
-@app.route("/direct-messaging")
-def messaging():
-    if "username" not in session:
-        return redirect(url_for("home", error="not_signed_in"))
-    return render_template("direct-messaging.html")  #Apparently, doing this just returns a 200 OK response
 @app.route("/api/users/@me")
 def get_current_user():
     if "username" in session and users_collection.find_one({"username": session["username"]}):
