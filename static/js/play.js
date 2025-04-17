@@ -210,6 +210,17 @@ function draw() {
   // If the avatar URL is available, draw the image as the player's avatar.
   if (avatarImg && avatarImg.complete) {
   const avatarRadius = playerSize / 2;
+  // Draw circle border
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(playerScreenX, playerScreenY, avatarRadius, 0, Math.PI * 2); // Slightly bigger radius for border
+  ctx.closePath();
+  ctx.strokeStyle = "#31e700"; // Border color
+  ctx.lineWidth = 1; // Optional: Thickness of the border
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw avatar image clipped in a circle
   ctx.save();
   ctx.beginPath();
   ctx.arc(playerScreenX, playerScreenY, avatarRadius, 0, Math.PI * 2);
