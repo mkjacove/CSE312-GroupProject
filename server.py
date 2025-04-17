@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-
+from PIL import Image
 import uuid
 from flask import Flask, request, render_template, jsonify, session, redirect, url_for, send_from_directory
 from utils.auth import auth_bp
@@ -32,7 +32,12 @@ def upload_avatar():
     ext = os.path.splitext(file.filename)[1].lower()
     unique_name = f"{uuid.uuid4()}{ext}"
     file_path = os.path.join("images/", unique_name)
-    file.save(file_path)
+
+    img = Image.open(file.stream).convert("RGBA")
+    width, height = img.size
+    side = min(width, height)
+    cropped_img = img.crop((0, 0, side, side))
+    cropped_img.save(file_path)
     session["avatar"] = unique_name
 
     users_collection.update_one({"username": session.get("username")}, {"$set": {"avatar":unique_name}})
