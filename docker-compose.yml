@@ -1,14 +1,9 @@
 services:
   mongo:
-    image: mongo:latest
-    container_name: flask_mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/utils/db
+    image: mongo:4.2.5
+  server:
+    build: .
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-
-volumes:
-  mongo_data:
+      WAIT_HOSTS: mongo:27017
+    ports:
+      - '8080:8080'
