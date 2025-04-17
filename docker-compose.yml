@@ -1,7 +1,7 @@
 services:
   mongo:
     image: mongo:4.2.5
-  server:
+  server-app:
     build: .
     environment:
       WAIT_HOSTS: mongo:27017
