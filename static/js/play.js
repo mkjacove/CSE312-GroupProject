@@ -1,285 +1,237 @@
-// ----------------------------
-// Configuration and Global Setup
-// ----------------------------
+// play.js
+console.log("play.js loaded");
 
-// Main game canvas and context.
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+// --- grab elements + contexts
+const canvas        = document.getElementById("gameCanvas");
+const ctx           = canvas.getContext("2d");
+const miniMapCanvas = document.getElementById("miniMapCanvas");
+const miniCtx       = miniMapCanvas.getContext("2d");
+const chatLog       = document.getElementById("chat-log");
 
-// Resize main canvas to fill entire viewport.
+// --- resize logic
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
+  canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
+  // fixed-size minimap
+  miniMapCanvas.width  = 200;
+  miniMapCanvas.height = 200;
 }
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// Mini map canvas and context – fixed square (200x200).
-const miniMapCanvas = document.getElementById("miniMapCanvas");
-const miniCtx = miniMapCanvas.getContext("2d");
+// --- game constants + state
+const tileSize   = 50,
+      gridCols   = 500,
+      gridRows   = 500,
+      gridWidth  = tileSize * gridCols,
+      gridHeight = tileSize * gridRows;
+let playerX = gridWidth/2,
+    playerY = gridHeight/2;
+let cameraX = 0,
+    cameraY = 0;
+let keys = {},
+    playerSpeed = 5;
+let avatarImg = null;
+let tileStates   = {};   // { "col,row": state }
+let otherPlayers = {};   // { sid: { x,y,username,avatarImg } }
 
-// Grid settings.
-const gridCols = 500;
-const gridRows = 500;
-const tileSize = 50;           // Each tile is 50x50 pixels.
-const gridWidth = gridCols * tileSize;
-const gridHeight = gridRows * tileSize;
+// --- input handling
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup",   e => keys[e.key] = false);
 
-// Player settings.
-// The player occupies exactly one tile.
-const playerSize = tileSize;
-let playerX = gridWidth / 2;  // Start at the center of the grid.
-let playerY = gridHeight / 2;
-const playerSpeed = 5;
-
-// Generate a random color for the player's main representation.
-function getRandomColor() {
-  const letters = "0123456789ABCDEF";
-  let color = "#";
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
+// --- load avatar from globals
+if (window.PLAYER_AVATAR) {
+  avatarImg = new Image();
+  avatarImg.src = `/images/${window.PLAYER_AVATAR}`;
 }
-let playerColor = getRandomColor();
 
-// Camera/viewport settings.
-let cameraX = 0;
-let cameraY = 0;
+// --- Socket.IO setup
+const socket = io('/game', { transports: ['websocket'] });
 
-// Keyboard input tracking.
-let keys = {};
-document.addEventListener("keydown", (e) => { keys[e.key] = true; });
-document.addEventListener("keyup", (e) => { keys[e.key] = false; });
+socket.on("connect", () => {
+  console.log("Socket connected:", socket.id);
+});
+socket.on("disconnect", () => {
+  console.log("Socket disconnected");
+});
 
-// ----------------------------
-// Tick System for TNT Run Logic
-// ----------------------------
+// initial full‑board snapshot
+socket.on('tile-init', data => {
+  tileStates = data.tileStates || {};
+});
 
-// We'll track triggered tiles in an object keyed as "col,row".
-// Each entry holds an object: { state, timer } where:
-//   state: 1 = "red" (active trigger), 2 = "dead" (tile disappeared, drawn black)
-//   timer: counts down ticks.
-let tileStates = {};
+// one‑off tile updates
+socket.on('tile-update', msg => {
+  if (msg.state === 0) delete tileStates[msg.key];
+  else             tileStates[msg.key] = msg.state;
+});
 
-// Duration (in ticks) the tile remains red before turning dead.
-// 1 second at 20 ticks-per-second = 20 ticks.
-const RED_DURATION = 20;
-
-// Tick function runs 20 times per second.
-function tick() {
-  // Identify the tile currently under the player's center.
-  let playerTileCol = Math.floor(playerX / tileSize);
-  let playerTileRow = Math.floor(playerY / tileSize);
-  let key = playerTileCol + "," + playerTileRow;
-  if (!tileStates[key]) {
-    // Mark this tile as triggered (red) if not already triggered.
-    tileStates[key] = { state: 1, timer: RED_DURATION };
-  }
-  
-  // Update all triggered tiles.
-  for (let tKey in tileStates) {
-    let tile = tileStates[tKey];
-    if (tile.state === 1) {  // In the red phase.
-      tile.timer--;
-      if (tile.timer <= 0) {
-        tile.state = 2;    // Transition to dead (black).
-      }
+// players list (add/update/remove)
+socket.on("players", msg => {
+  otherPlayers = {};
+  for (const id in msg.players) {
+    if (id === socket.id) {
+      playerX = msg.players[id].x;
+      playerY = msg.players[id].y;
+      continue;
     }
-    // Once in state 2, the tile remains dead (black).
-  }
-}
-// Start tick system at 20 TPS.
-setInterval(tick, 50);
-
-// ----------------------------
-// Fullscreen Setup
-// ----------------------------
-// Apply fullscreen to the container so that both canvases remain visible.
-document.getElementById("fullscreen-btn").addEventListener("click", () => {
-  const container = document.getElementById("canvas-container");
-  if (document.fullscreenElement) {
-    document.exitFullscreen();
-  } else {
-    container.requestFullscreen().catch(err => {
-      console.error(`Error attempting fullscreen: ${err.message}`);
-    });
+    const d = msg.players[id];
+    const img = new Image();
+    img.src = `/images/${d.avatar}`;
+    otherPlayers[id] = { ...d, avatarImg: img };
   }
 });
 
-// ----------------------------
-// Game Loop and Rendering Routines
-// ----------------------------
+// optional chat handler
+socket.on("chat", msg => addChatMessage(msg.text));
 
+// --- game update: movement + emit
 function update() {
   let dx = 0, dy = 0;
-  if (keys["ArrowUp"] || keys["w"]) dy -= playerSpeed;
-  if (keys["ArrowDown"] || keys["s"]) dy += playerSpeed;
-  if (keys["ArrowLeft"] || keys["a"]) dx -= playerSpeed;
-  if (keys["ArrowRight"] || keys["d"]) dx += playerSpeed;
-  
-  let newPlayerX = playerX + dx;
-  let newPlayerY = playerY + dy;
-  newPlayerX = Math.max(0, Math.min(newPlayerX, gridWidth - playerSize));
-  newPlayerY = Math.max(0, Math.min(newPlayerY, gridHeight - playerSize));
-  playerX = newPlayerX;
-  playerY = newPlayerY;
-  
-  const viewWidth = canvas.width;
-  const viewHeight = canvas.height;
-  const margin = 100;  // Margin to auto-scroll.
-  
-  if (playerX - cameraX < margin) {
-    cameraX = Math.max(0, playerX - margin);
-  } else if (playerX - cameraX > viewWidth - margin - playerSize) {
-    cameraX = Math.min(gridWidth - viewWidth, playerX - viewWidth + margin + playerSize);
-  }
-  if (playerY - cameraY < margin) {
-    cameraY = Math.max(0, playerY - margin);
-  } else if (playerY - cameraY > viewHeight - margin - playerSize) {
-    cameraY = Math.min(gridHeight - viewHeight, playerY - viewHeight + margin + playerSize);
-  }
-}
-let avatarImg = null;
-if (window.PLAYER_AVATAR) {
-  avatarImg = new Image();
-  avatarImg.src = "/images/" + window.PLAYER_AVATAR;
+  if (keys.ArrowUp || keys.w)    dy -= playerSpeed;
+  if (keys.ArrowDown || keys.s)  dy += playerSpeed;
+  if (keys.ArrowLeft || keys.a)  dx -= playerSpeed;
+  if (keys.ArrowRight || keys.d) dx += playerSpeed;
+
+  playerX = Math.max(0, Math.min(playerX + dx, gridWidth));
+  playerY = Math.max(0, Math.min(playerY + dy, gridHeight));
+
+  cameraX = Math.max(0, Math.min(playerX + tileSize/2 - canvas.width/2,
+                                  gridWidth  - canvas.width));
+  cameraY = Math.max(0, Math.min(playerY + tileSize/2 - canvas.height/2,
+                                  gridHeight - canvas.height));
+
+  socket.emit("move", { x: playerX, y: playerY });
 }
 
-let username = null;
-if(window.PLAYER_USERNAME) {
-  username = window.PLAYER_USERNAME;
-}
-
-fetch("/api/users/@me")
-  .then(res => res.json())
-  .then(user => {
-    if (user && user.avatar) {
-      window.PLAYER_AVATAR = user.avatar;
-
-      // Load avatar image once user info is available
-      avatarImg = new Image();
-      avatarImg.src = "/images/" + window.PLAYER_AVATAR;
-    }
-
-    if (user && user.username) {
-      username = user.username;
-    }
-
-  });
-
+// --- draw loop
 function draw() {
-  const viewWidth = canvas.width;
-  const viewHeight = canvas.height;
-  
-  // Draw visible grid tiles.
-  const startCol = Math.floor(cameraX / tileSize);
-  const endCol = Math.min(gridCols, Math.floor((cameraX + viewWidth) / tileSize) + 1);
-  const startRow = Math.floor(cameraY / tileSize);
-  const endRow = Math.min(gridRows, Math.floor((cameraY + viewHeight) / tileSize) + 1);
-  
-  // For each visible tile, determine its color.
-  for (let row = startRow; row < endRow; row++) {
-    for (let col = startCol; col < endCol; col++) {
-      const tileX = col * tileSize - cameraX;
-      const tileY = row * tileSize - cameraY;
-      let key = col + "," + row;
-      // Default tile (active) is white.
-      let fillColor = "#ffffff";
-      if (tileStates[key]) {
-        if (tileStates[key].state === 1) {
-          fillColor = "#FF0000"; // red when triggered.
-        } else if (tileStates[key].state === 2) {
-          fillColor = "#000000"; // dead blocks are black.
-        }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+    ctx.translate(-cameraX, -cameraY);
+
+    // draw tiles
+    const startCol = Math.floor(cameraX / tileSize),
+          endCol   = Math.ceil((cameraX + canvas.width)  / tileSize);
+    const startRow = Math.floor(cameraY / tileSize),
+          endRow   = Math.ceil((cameraY + canvas.height) / tileSize);
+
+    for (let r = startRow; r < endRow; r++) {
+      for (let c = startCol; c < endCol; c++) {
+        const x = c * tileSize,
+              y = r * tileSize,
+              k = `${c},${r}`;
+        const state = tileStates[k] || 0;
+        ctx.fillStyle = state === 1  ? "#F00"
+                       : state === 2 ? "#000"
+                       :               "#FFF";
+        ctx.fillRect(x, y, tileSize, tileSize);
+        ctx.strokeStyle = "#CCC";
+        ctx.strokeRect(x, y, tileSize, tileSize);
       }
-      ctx.fillStyle = fillColor;
-      ctx.fillRect(tileX, tileY, tileSize, tileSize);
-      
-      // Draw grid lines.
-      ctx.strokeStyle = "#cccccc";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(tileX, tileY, tileSize, tileSize);
     }
+
+    // draw self
+    drawPlayer(playerX, playerY, window.PLAYER_USERNAME, avatarImg);
+
+    // draw others
+    for (const id in otherPlayers) {
+      const p = otherPlayers[id];
+      drawPlayer(p.x, p.y, p.username, p.avatarImg);
+    }
+  ctx.restore();
+
+  // --- draw minimap
+  const cols   = gridCols,
+        rows   = gridRows,
+        mapW   = miniMapCanvas.width,
+        mapH   = miniMapCanvas.height,
+        scaleX = mapW / cols,
+        scaleY = mapH / rows;
+  miniCtx.clearRect(0, 0, mapW, mapH);
+
+  // background
+  miniCtx.fillStyle = "#FFF";
+  miniCtx.fillRect(0, 0, mapW, mapH);
+
+  // painted tiles (red=1, black=2)
+  for (const key in tileStates) {
+    const [c, r] = key.split(',').map(Number),
+          st     = tileStates[key];
+    if (st === 1)       miniCtx.fillStyle = "#F00";
+    else if (st === 2)  miniCtx.fillStyle = "#000";
+    else                continue;
+    miniCtx.fillRect(c * scaleX, r * scaleY, scaleX, scaleY);
   }
 
-  // Draw the player's avatar as a circle.
-  const playerScreenX = playerX - cameraX + playerSize / 2;
-  const playerScreenY = playerY - cameraY + playerSize / 2;
+  // player dot
+  const cellX = (playerX + tileSize/2) / tileSize,
+        cellY = (playerY + tileSize/2) / tileSize;
+  miniCtx.fillStyle = "#0F0";
+  miniCtx.beginPath();
+  miniCtx.arc(cellX * scaleX, cellY * scaleY, 5, 0, 2*Math.PI);
+  miniCtx.fill();
+}
 
-  // If the avatar URL is available, draw the image as the player's avatar.
-  if (avatarImg && avatarImg.complete) {
-  const avatarRadius = playerSize / 2;
+// draw a single player avatar+name (with border)
+function drawPlayer(x, y, username, img) {
+  const radius = tileSize * 0.4,
+        cx = x + tileSize/2,
+        cy = y + tileSize/2;
+
+  // avatar circle
+  if (img && img.complete) {
+    ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+      ctx.clip();
+      ctx.drawImage(img, cx-radius, cy-radius, radius*2, radius*2);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#3498db";
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+    ctx.fill();
+  }
+
   // Draw circle border
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(playerScreenX, playerScreenY, avatarRadius, 0, Math.PI * 2); // Slightly bigger radius for border
-  ctx.closePath();
-  ctx.strokeStyle = "#31e700"; // Border color
-  ctx.lineWidth = 1; // Optional: Thickness of the border
-  ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 1, 0, Math.PI * 2); // slightly larger
+    ctx.closePath();
+    ctx.strokeStyle = "#31e700"; // border color
+    ctx.lineWidth = 1;
+    ctx.stroke();
   ctx.restore();
 
-  // Draw avatar image clipped in a circle
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(playerScreenX, playerScreenY, avatarRadius, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  ctx.drawImage(avatarImg, playerScreenX - avatarRadius, playerScreenY - avatarRadius, playerSize, playerSize);
-  ctx.restore();
-} else {
-  // Fallback circle
-  ctx.fillStyle = playerColor;
-  ctx.beginPath();
-  ctx.arc(playerScreenX, playerScreenY, playerSize / 2, 0, Math.PI * 2);
-  ctx.fill();
-}
-  // Add the username if it exists
-  if (username) {
-  ctx.font = "16px Arial";
+  // username label
   ctx.fillStyle = "#31e700";
+  ctx.font = "16px Arial";
   ctx.textAlign = "center";
-  ctx.fillText(username, playerScreenX, playerScreenY - playerSize / 2 - 10);
+  ctx.fillText(username, cx, cy - radius - 10);
 }
 
-  // ----------------------------
-  // Draw the Mini Map
-  // ----------------------------
-  const miniWidth = miniMapCanvas.width;
-  const miniHeight = miniMapCanvas.height;
-  const scaleX = miniWidth / gridWidth;
-  const scaleY = miniHeight / gridHeight;
-
-  // Clear and fill mini map.
-  miniCtx.fillStyle = "#ffffff";
-  miniCtx.fillRect(0, 0, miniWidth, miniHeight);
-
-  // Draw triggered tiles in the mini map.
-  for (let tKey in tileStates) {
-    let parts = tKey.split(",");
-    let col = parseInt(parts[0]);
-    let row = parseInt(parts[1]);
-    let tileState = tileStates[tKey].state;
-    let miniFill = (tileState === 1) ? "#FF0000" : "#000000";
-    miniCtx.fillStyle = miniFill;
-    miniCtx.fillRect(col * tileSize * scaleX, row * tileSize * scaleY, tileSize * scaleX, tileSize * scaleY);
-  }
-
-  // Draw the player's position on the mini map as red.
-  miniCtx.fillStyle = "#FF0000";
-  miniCtx.fillRect(playerX * scaleX, playerY * scaleY, tileSize * scaleX, tileSize * scaleY);
-
-  // Draw the main viewport on the mini map with a red rectangle.
-  miniCtx.strokeStyle = "#FF0000";
-  miniCtx.lineWidth = 1;
-  miniCtx.strokeRect(cameraX * scaleX, cameraY * scaleY, viewWidth * scaleX, viewHeight * scaleY);
+// helper to append chat messages
+function addChatMessage(msg) {
+  const div = document.createElement("div");
+  div.textContent = msg;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
 }
+
+// emit painting every 100ms
+setInterval(() => {
+  const col = Math.floor((playerX + tileSize/2) / tileSize);
+  const row = Math.floor((playerY + tileSize/2) / tileSize);
+  const key = `${col},${row}`;
+  socket.emit("tile", { key });
+}, 100);
+
+// start game loop
 function gameLoop() {
   update();
-
   draw();
   requestAnimationFrame(gameLoop);
 }
-
 gameLoop();

@@ -4,7 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>312game.com - Play</title>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- pass server‐rendered user into JS globals -->
+    <script>
+      window.PLAYER_USERNAME = "{{ PLAYER_USERNAME }}";
+      window.PLAYER_AVATAR  = "{{ PLAYER_AVATAR }}";
+    </script>
+
     <style>
       html, body {
         margin: 0;
@@ -14,14 +23,12 @@
         font-family: 'Poppins', sans-serif;
         color: #fff;
       }
-      /* Container holds both canvases */
       #canvas-container {
         position: relative;
         width: 100vw;
         height: 100vh;
         background-color: #222;
       }
-      /* Fullscreen button styling */
       #fullscreen-btn {
         position: absolute;
         top: 10px;
@@ -35,7 +42,6 @@
         cursor: pointer;
         z-index: 20;
       }
-      /* Mini map styling: fixed square on the top-left */
       #miniMapCanvas {
         position: absolute;
         top: 10px;
@@ -46,61 +52,39 @@
         height: 200px;
         z-index: 15;
       }
-      /* Main game canvas will fill the container */
       #gameCanvas {
         display: block;
       }
+      #chat-log {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        width: 300px;
+        max-height: 200px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.5);
+        padding: 0.5rem;
+        font-size: 14px;
+        z-index: 15;
+      }
     </style>
   </head>
+
   <body>
     <div id="canvas-container">
       <button id="fullscreen-btn">Fullscreen</button>
-      <!-- Mini map canvas (remains a fixed 200x200 square) -->
       <canvas id="miniMapCanvas" width="200" height="200"></canvas>
-      <!-- Main game canvas (size set in JS) -->
       <canvas id="gameCanvas"></canvas>
+      <div id="chat-log"></div>
     </div>
 
+    <!-- lucide icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-      lucide.createIcons();
+    <script>lucide.createIcons();</script>
 
-      async function main() {
-        const userProfile = await (await fetch("/api/users/@me")).json();
-        const loginButton = document.getElementById("login-button");
-        const registerButton = document.getElementById("register-button");
-        const loggedIn = document.getElementById("logged-in");
-        const myUsername = document.getElementById("hello-username");
-
-        console.log("USER PROFILE", userProfile);
-        if (userProfile.id) {
-          loginButton.style.display = "none";
-          registerButton.style.display = "none";
-          loggedIn.style.display = "flex";
-          myUsername.innerText = `Hello ${userProfile.username}!`;
-        } else {
-          loginButton.style.display = "block";
-          registerButton.style.display = "block";
-          loggedIn.style.display = "none";
-        }
-      }
-
-      main();
-    </script>
-    <script>
-  fetch("/api/users/@me")
-    .then(res => res.json())
-    .then(user => {
-      if (user.username) {
-        window.PLAYER_USERNAME = user.username;
-        // optional: show it on screen
-        console.log("Logged in as", user.username);
-      }
-      if (user.avatar) {
-        window.PLAYER_AVATAR = user.avatar
-      }
-    });
-</script>
+    <!-- socket.io client -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <!-- your game logic -->
     <script src="/static/js/play.js"></script>
   </body>
 </html>
