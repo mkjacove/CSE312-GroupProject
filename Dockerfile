@@ -10,7 +10,7 @@ COPY ./images ./images
 COPY ./static ./static
 COPY ./templates ./templates
 
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
 
 EXPOSE 8000
 
