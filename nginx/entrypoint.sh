@@ -2,14 +2,12 @@
 
 echo "[INIT] Clearing old log files..."
 
-# Remove any duplicated or rotated logs
 rm -f /var/www/logs/access.log
 rm -f /var/www/logs/error.log
 
 
-# Re-create empty logs
 touch /var/www/logs/access.log /var/www/logs/error.log
-chmod 666 /var/www/logs/*.log
+chmod 666 /var/www/logs/access.log
+chmod 666 /var/www/logs/error.log
 
-# Start Nginx
 exec nginx -g "daemon off;"
