@@ -1,9 +1,28 @@
 services:
   mongo:
     image: mongo:4.2.5
+    ports:
+      - "27017:27017"
   myapp3:
     build: .
     environment:
       WAIT_HOSTS: mongo:27017
+    expose:
+      - "8000"
+  nginx:
+    image: nginx:latest
+    container_name: flask_nginx
     ports:
-      - '8080:8080'
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+      - ./logs/nginx:/var/www/logs
+    depends_on:
+      - myapp3
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+
+
+volumes:
+  mongo_data:
+  nginx_logs:
