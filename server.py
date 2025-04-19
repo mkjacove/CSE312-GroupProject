@@ -8,7 +8,7 @@ from flask import (
 from flask_socketio import SocketIO, emit
 from utils.auth import auth_bp
 from utils.db import users_collection
-from PIL import Image   
+import imageio.v3 as iio
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
@@ -17,6 +17,7 @@ app.secret_key = "very_secret_key"
 app.permanent_session_lifetime = timedelta(days=1)
 app.config.update(SESSION_COOKIE_HTTPONLY=True)
 
+
 # Serve images
 @app.route("/images/<filename>")
 def serve_image(filename):
@@ -24,7 +25,6 @@ def serve_image(filename):
         os.path.join(app.root_path, "images"),
         filename
     )
-
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -39,28 +39,31 @@ def avatar():
         if not file or file.filename == "":
             return "No file uploaded", 400
 
+        img = iio.imread(file.stream)
+
         # build unique filename
         ext = os.path.splitext(file.filename)[1].lower()
         unique_name = f"{uuid.uuid4()}{ext}"
 
-        # crop to square and save
-        file_path = os.path.join(app.root_path, "images", unique_name)
-        img = Image.open(file.stream).convert("RGBA")
-        w, h = img.size
-        side = min(w, h)
-        cropped = img.crop((0, 0, side, side))
-        cropped.save(file_path)
+        # Square crop
+        h, w = img.shape[:2]
+        side_length = min(h, w)
+        cropped = img[0:side_length, 0:side_length]
+
+        # Save
+        file_path = os.path.join(app.root_path, "images/", unique_name)
+        iio.imwrite(file_path, cropped)
 
         # update session & DB
         session["avatar"] = unique_name
         users_collection.update_one(
             {"username": session["username"]},
-            {"$set": {"avatar": unique_name}}
-        )
+            {"$set": {"avatar": unique_name}})
 
         return redirect(url_for("avatar"))
 
     return render_template("change-avatar.html")
+
 
 @app.route("/leaderboard")
 def leaderboard():
