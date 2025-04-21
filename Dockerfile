@@ -10,11 +10,13 @@ COPY ./images ./images
 COPY ./static ./static
 COPY ./templates ./templates
 
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 EXPOSE 8000
 
-ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.2.1/wait /wait
-RUN chmod +x /wait
+#ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.2.1/wait /wait
+#RUN chmod +x /wait
 
-CMD /wait && python -u server.py
+COPY --from=ghcr.io/ufoscout/docker-compose-wait:latest /wait /wait
+
+CMD /wait && python3 -u server.py
