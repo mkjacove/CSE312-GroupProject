@@ -27,3 +27,6 @@ UPDATE:
 
 did one more test run on a git-cloned repo, did not work, so changed the /wait to just COPY from the latest
 release of docker-compose-wait, and it works now!
+
+Did one more test run and realized websockets weren't working, so went back to default file and configured
+the file to manually set the proxy headers for a websocket upgrade.
