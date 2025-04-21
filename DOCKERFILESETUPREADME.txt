@@ -22,3 +22,8 @@ Went to re-configure Dockerfile and docker-compose.yml file a little bit, but ju
 Ran docker compose up (force build version) and it succeeded!
 
 Pushed to second branch (used for deployment) for now
+
+UPDATE:
+
+did one more test run on a git-cloned repo, did not work, so changed the /wait to just COPY from the latest
+release of docker-compose-wait, and it works now!
