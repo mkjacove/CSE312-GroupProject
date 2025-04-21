@@ -49,7 +49,7 @@ if (window.PLAYER_AVATAR) {
 
   avatarImg.onerror = () => {
     console.error("Failed to load avatar image!");
-    avatarImg = null;  // fallback to default circle
+    avatarImg.src = `/images/user.webp`;  // fallback to default circle
   };
 }
 
@@ -108,6 +108,10 @@ socket.on("players", msg => {
     const d = msg.players[id];
     const img = new Image();
     img.src = `/images/${d.avatar}`;
+    img.onerror = () => {
+      console.error("Failed to load avatar image!");
+      img.src = `/images/user.webp`;  // fallback to default circle
+    };
     otherPlayers[id] = { ...d, avatarImg: img };
   }
 
