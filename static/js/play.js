@@ -35,6 +35,7 @@ let avatarImg = null;
 let tileStates = { 1: {}, 2: {}, 3: {} };   // per board
 let otherPlayers = {};   // { sid: { x,y,username,avatarImg } }
 let playerBoardLevel = 1;
+let gameStarted = false;
 
 
 // --- input handling
@@ -109,6 +110,11 @@ socket.on("players", msg => {
     img.src = `/images/${d.avatar}`;
     otherPlayers[id] = { ...d, avatarImg: img };
   }
+
+  if (!gameStarted) {
+    gameStarted = true;
+    gameLoop();
+  }
 });
 
 // optional chat handler
@@ -164,7 +170,7 @@ function draw() {
         if (currentBoard === 1) {
           ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
                        : state === 2 ? "#000"  // Black for the tiles that should cause progression
-                       :               "#ffe2fe"; // light pink for empty tiles
+                       :               "#fff4dd"; // light orange for empty tiles
 
         } else if (currentBoard === 2) {
           ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
@@ -296,4 +302,4 @@ function gameLoop() {
   draw();
   requestAnimationFrame(gameLoop);
 }
-gameLoop();
+// gameLoop();
