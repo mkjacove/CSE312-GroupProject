@@ -51,7 +51,7 @@ def register():
             return message, 400
 
         hashed_password = generate_password_hash(password)
-        users_collection.insert_one({"username": username, "password": hashed_password})
+        users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp"})
 
         print(f"✅ Registered user: {username}")
         return "User is registered now!", 200
