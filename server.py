@@ -120,9 +120,17 @@ GRID_HEIGHT= TILE_SIZE * GRID_ROWS
 TILE_STATE_TRANSITION_DELAY = timedelta(seconds=2)
 
 # In‑memory game state
-tile_states     = {}  # map "col,row" → int state
-tile_timestamps = {}  # map "col,row" → datetime when set to 1
-players         = {}  # sid → { x, y, username, avatar }
+tile_states = {
+    1: {},
+    2: {},
+    3: {}
+}
+tile_timestamps = {
+    1: {},
+    2: {},
+    3: {}
+}
+players         = {}  # sid → { x, y, username, board_level, avatar }
 
 def _me():
     return {
@@ -136,6 +144,7 @@ def ws_connect():
     players[sid] = {
         "x": GRID_WIDTH / 2,
         "y": GRID_HEIGHT / 2,
+        "board_level": 1,
         **_me()
     }
     emit('tile-init', {'tileStates': tile_states}, namespace='/game')
@@ -155,38 +164,62 @@ def handle_move(data):
 
 @socketio.on('tile', namespace='/game')
 def handle_tile(data):
+    sid = request.sid
+    player = players.get(sid)
+    if not player:
+        return
+
+    board = player.get('board_level', 1)
     key = data['key']
     now = datetime.now()
 
-    # 0 → 1
-    if tile_states.get(key, 0) == 0:
-        tile_states[key]     = 1
-        tile_timestamps[key] = now
-        emit('tile-update', {'key': key, 'state': 1},
+    if tile_states[board].get(key, 0) == 0:
+        tile_states[board][key] = 1
+        tile_timestamps[board][key] = now
+        emit('tile-update', {'key': key, 'state': 1, 'board': board},
              namespace='/game', broadcast=True)
 
-    # 1 → 2 after delay
+    # 1 ➔ 2 after delay
     due = []
-    for k, st in list(tile_states.items()):
-        if st == 1 and now - tile_timestamps.get(k, now) >= TILE_STATE_TRANSITION_DELAY:
-            tile_states[k] = 2
-            del tile_timestamps[k]
+    for k, st in list(tile_states[board].items()):
+        if st == 1 and now - tile_timestamps[board].get(k, now) >= TILE_STATE_TRANSITION_DELAY:
+            tile_states[board][k] = 2
+            del tile_timestamps[board][k]
             due.append(k)
 
     for k in due:
-        emit('tile-update', {'key': k, 'state': 2},
+        emit('tile-update', {'key': k, 'state': 2, 'board': board},
              namespace='/game', broadcast=True)
 
     # re‑broadcast clicked tile
-    emit('tile-update', {'key': key, 'state': tile_states[key]},
+    emit('tile-update', {'key': key, 'state': tile_states[board].get(key, 0), 'board': board},
          namespace='/game', broadcast=True)
 
 @socketio.on('reset', namespace='/game')
 def handle_reset():
-    global tile_states, tile_timestamps
-    tile_states = {}
-    tile_timestamps = {}
-    emit('tile-init', {'tileStates': tile_states}, namespace='/game', broadcast=True)
+    sid = request.sid
+    player = players.get(sid)
+    if not player:
+        return
+
+    current_board = player.get('board_level', 1)
+    if current_board < 3:
+        # move player to next board
+        players[sid]['board_level'] = current_board + 1
+
+        # reposition player back to center
+        players[sid]['x'] = GRID_WIDTH / 2
+        players[sid]['y'] = GRID_HEIGHT / 2
+
+        # tell client maybe (optional: pop-up "Level 2!")
+        emit('chat', {'text': f"{player['username']} advanced to Board {current_board+1}!"}, namespace='/game', broadcast=True)
+
+    else:
+        # eliminate player
+        emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
+        players.pop(sid, None)
+        emit('players', {'players': players}, namespace='/game', broadcast=True)
+
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
