@@ -43,6 +43,11 @@ document.addEventListener("keyup",   e => keys[e.key] = false);
 if (window.PLAYER_AVATAR) {
   avatarImg = new Image();
   avatarImg.src = `/images/${window.PLAYER_AVATAR}`;
+
+  avatarImg.onerror = () => {
+    console.error("Failed to load avatar image!");
+    avatarImg = null;  // fallback to default circle
+  };
 }
 
 // --- Socket.IO setup
@@ -225,6 +230,14 @@ setInterval(() => {
   const col = Math.floor((playerX + tileSize/2) / tileSize);
   const row = Math.floor((playerY + tileSize/2) / tileSize);
   const key = `${col},${row}`;
+
+  const state = tileStates[key] || 0;
+  if (state === 2) {
+    // You stepped on a black tile!
+    socket.emit("reset"); // <--- tell server to reset
+    return; // stop here so you don't keep painting
+  }
+
   socket.emit("tile", { key });
 }, 100);
 

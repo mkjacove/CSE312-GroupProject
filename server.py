@@ -181,6 +181,13 @@ def handle_tile(data):
     emit('tile-update', {'key': key, 'state': tile_states[key]},
          namespace='/game', broadcast=True)
 
+@socketio.on('reset', namespace='/game')
+def handle_reset():
+    global tile_states, tile_timestamps
+    tile_states = {}
+    tile_timestamps = {}
+    emit('tile-init', {'tileStates': tile_states}, namespace='/game', broadcast=True)
+
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
     sid = request.sid
