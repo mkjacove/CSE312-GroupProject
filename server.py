@@ -145,7 +145,6 @@ def find_random_white_tile(board_level):
         col = random.randint(0, GRID_COLS - 1)
         row = random.randint(0, GRID_ROWS - 1)
         key = f"{col},{row}"
-        print("yummy board ", board_level, tile_states[board_level])
         if key not in tile_states[board_level] or tile_states[board_level][key] == 0:
             x = col * TILE_SIZE + TILE_SIZE / 2
             y = row * TILE_SIZE + TILE_SIZE / 2

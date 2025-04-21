@@ -34,6 +34,8 @@ let keys = {},
 let avatarImg = null;
 let tileStates = { 1: {}, 2: {}, 3: {} };   // per board
 let otherPlayers = {};   // { sid: { x,y,username,avatarImg } }
+let playerBoardLevel = 1;
+
 
 // --- input handling
 document.addEventListener("keydown", e => keys[e.key] = true);
@@ -99,6 +101,7 @@ socket.on("players", msg => {
     if (id === socket.id) {
       playerX = msg.players[id].x;
       playerY = msg.players[id].y;
+      playerBoardLevel = msg.players[id].board_level || 1;
       continue;
     }
     const d = msg.players[id];
@@ -112,7 +115,7 @@ socket.on("players", msg => {
 socket.on("chat", msg => addChatMessage(msg.text));
 
 function getPlayerBoardLevel() {
-  return otherPlayers[socket.id]?.board_level || 1;  // Default to board 1 if not found
+  return playerBoardLevel;
 }
 
 // --- game update: movement + emit
@@ -157,9 +160,22 @@ function draw() {
               k = `${c},${r}`;
         const state = tileStates[currentBoard][k] || 0;  // Use the correct board's state
 
-        ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
+        // Fill background with different colors based on the board
+        if (currentBoard === 1) {
+          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
+                       : state === 2 ? "#000"  // Black for the tiles that should cause progression
+                       :               "#ffe2fe"; // light pink for empty tiles
+
+        } else if (currentBoard === 2) {
+          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
                        : state === 2 ? "#000"  // Black for the tiles that should cause progression
                        :               "#FFF"; // White for empty tiles
+
+        } else if (currentBoard === 3) {
+          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
+                       : state === 2 ? "#000"  // Black for the tiles that should cause progression
+                       :               "#e2f2ff"; // light blue for empty tiles
+        }
 
         ctx.fillRect(x, y, tileSize, tileSize);
         ctx.strokeStyle = "#CCC";
