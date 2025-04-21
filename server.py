@@ -9,6 +9,7 @@ from flask_socketio import SocketIO, emit
 from utils.auth import auth_bp
 from utils.db import users_collection
 import imageio.v3 as iio
+import random
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
@@ -138,12 +139,28 @@ def _me():
         "avatar":   session.get("avatar", "user.webp")
     }
 
+def find_random_white_tile(board_level):
+    """Find a random (x, y) on a white tile (state == 0)."""
+    for _ in range(250):
+        col = random.randint(0, GRID_COLS - 1)
+        row = random.randint(0, GRID_ROWS - 1)
+        key = f"{col},{row}"
+        print("yummy board ", board_level, tile_states[board_level])
+        if key not in tile_states[board_level] or tile_states[board_level][key] == 0:
+            x = col * TILE_SIZE + TILE_SIZE / 2
+            y = row * TILE_SIZE + TILE_SIZE / 2
+            return x, y
+    # fallback: center if nothing found
+    return GRID_WIDTH / 2, GRID_HEIGHT / 2
+
 @socketio.on('connect', namespace='/game')
 def ws_connect():
     sid = request.sid
+
+    spawn_x, spawn_y = find_random_white_tile(1)
     players[sid] = {
-        "x": GRID_WIDTH / 2,
-        "y": GRID_HEIGHT / 2,
+        "x": spawn_x,
+        "y": spawn_y,
         "board_level": 1,
         **_me()
     }
@@ -207,9 +224,10 @@ def handle_reset():
         # move player to next board
         players[sid]['board_level'] = current_board + 1
 
-        # reposition player back to center
-        players[sid]['x'] = GRID_WIDTH / 2
-        players[sid]['y'] = GRID_HEIGHT / 2
+        # reposition player back to a random location
+        spawn_x, spawn_y = find_random_white_tile(board_level=current_board + 1)
+        players[sid]['x'] = spawn_x
+        players[sid]['y'] = spawn_y
 
         # tell client maybe (optional: pop-up "Level 2!")
         emit('chat', {'text': f"{player['username']} advanced to Board {current_board+1}!"}, namespace='/game', broadcast=True)
@@ -217,6 +235,10 @@ def handle_reset():
     else:
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
+
+        # notify *only* the eliminated player to redirect
+        emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
+
         players.pop(sid, None)
         emit('players', {'players': players}, namespace='/game', broadcast=True)
 

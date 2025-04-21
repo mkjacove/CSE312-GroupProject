@@ -60,6 +60,11 @@ socket.on("disconnect", () => {
   console.log("Socket disconnected");
 });
 
+socket.on("eliminated", (data) => {
+    alert("You've been eliminated!");
+    window.location.href = data.redirect;
+});
+
 // initial full‑board snapshot
 socket.on('tile-init', data => {
   tileStates = { 1: {}, 2: {}, 3: {} }; // reset clean
