@@ -2,13 +2,13 @@ services:
   mongo:
     image: mongo:4.2.5
     ports:
-      - '27017:27017'
+      - "27017:27017"
   myapp3:
     build: .
     environment:
       WAIT_HOSTS: mongo:27017
-    ports:
-      - '8080:8080'
+    expose:
+      - "8000"
   nginx:
     image: nginx:latest
     container_name: flask_nginx
