@@ -23,9 +23,7 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True)
 @app.route("/images/<filename>")
 def serve_image(filename):
     return send_from_directory(
-        os.path.join(app.root_path, "images"),
-        filename
-    )
+        os.path.join(app.root_path, "images/"),filename)
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -53,6 +51,7 @@ def avatar():
 
         # Save
         file_path = os.path.join(app.root_path, "images/", unique_name)
+
         iio.imwrite(file_path, cropped)
 
         # update session & DB
