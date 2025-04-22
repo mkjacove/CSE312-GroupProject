@@ -4,7 +4,8 @@ echo "[INIT] Clearing old log files..."
 
 rm -f /var/www/logs/access.log
 rm -f /var/www/logs/error.log
-rm -f /var/www/logs/*.log
+rm -f /var/www/logs/error.log
+
 
 
 touch /var/www/logs/access.log /var/www/logs/error.log

@@ -15,7 +15,6 @@ def is_valid_password(password):
     return True, None
 
 @auth_bp.route("/login", methods=["GET", "POST"])
-@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username")
