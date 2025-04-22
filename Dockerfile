@@ -5,6 +5,7 @@ WORKDIR /root
 
 COPY ./requirements.txt ./requirements.txt
 COPY ./server.py ./server.py
+COPY ./run.py ./run.py
 COPY ./utils ./utils
 COPY ./images ./images
 COPY ./static ./static
@@ -17,4 +18,4 @@ EXPOSE 8000
 ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.2.1/wait /wait
 RUN chmod +x /wait
 
-CMD /wait && python -u server.py
+CMD /wait && python -u run.py
