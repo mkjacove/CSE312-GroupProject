@@ -103,7 +103,7 @@ def get_current_user():
 
 # ─── WebSocket setup for /game namespace ──────────────────────────────────────
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # Game grid constants (must match client)
 TILE_SIZE  = 50
@@ -201,4 +201,4 @@ def ws_disconnect():
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080)
+    socketio.run(app, host="0.0.0.0", port=8080,  allow_unsafe_werkzeug=True)

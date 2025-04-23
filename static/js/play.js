@@ -71,7 +71,7 @@ socket.on("tile-init", data => {
   }
 });
 
-// ─── PER‑TILE UPDATES ───────────────────────────────────────────────────────
+// ─── PER-TILE UPDATES ───────────────────────────────────────────────────────
 socket.on("tile-update", msg => {
   const { key, state, board } = msg;
   if (state === 0) {
@@ -89,12 +89,13 @@ socket.on("players", msg => {
   otherPlayers = {};
   for (const id in msg.players) {
     const d = msg.players[id];
+
     if (id === socket.id) {
-      playerX = d.x;
-      playerY = d.y;
+      // only update board‐level for ourselves
       playerBoardLevel = d.board_level;
       continue;
     }
+
     if (!avatarCache[d.avatar]) {
       const img = new Image();
       img.src = `/images/${d.avatar}`;
@@ -262,7 +263,7 @@ setInterval(() => {
   }
 }, 100);
 
-// ─── RE‑EMIT ALL RED TILES EVERY SECOND ─────────────────────────────────────
+// ─── RE-EMIT ALL RED TILES EVERY SECOND ─────────────────────────────────────
 setInterval(() => {
   for (let b = 1; b <= 3; b++) {
     for (const key of activeRedTiles[b]) {
