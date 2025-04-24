@@ -92,6 +92,13 @@ socket.on("players", msg => {
 
     if (id === socket.id) {
       // only update board‐level for ourselves
+      if (playerX === gridWidth/2) {
+        playerX = d.x;  // Update only if the position has changed
+      }
+
+      if (playerY === gridHeight/2) {
+        playerY = d.y;  // Update only if the position has changed
+      }
       playerBoardLevel = d.board_level;
       continue;
     }

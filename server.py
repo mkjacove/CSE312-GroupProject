@@ -126,12 +126,26 @@ def _me():
         "avatar":   session.get("avatar", "user.webp")
     }
 
+
+def find_random_white_tile(board_level):
+    """Find a random (x, y) on a white tile (state == 0)."""
+    for _ in range(250):
+        col = random.randint(0, GRID_COLS - 1)
+        row = random.randint(0, GRID_ROWS - 1)
+        key = f"{col},{row}"
+        if key not in tile_states[board_level] or tile_states[board_level][key] == 0:
+            x = col * TILE_SIZE + TILE_SIZE / 2
+            y = row * TILE_SIZE + TILE_SIZE / 2
+            return x, y
+    # fallback: center if nothing found
+    return GRID_WIDTH / 2, GRID_HEIGHT / 2
+
 @socketio.on('connect', namespace='/game')
 def ws_connect():
     sid = request.sid
-    spawn_x = random.randint(0, GRID_WIDTH - TILE_SIZE)
-    spawn_y = random.randint(0, GRID_HEIGHT - TILE_SIZE)
-    
+
+    spawn_x, spawn_y = find_random_white_tile(1)
+    print("burger ", spawn_x, spawn_y)
     players[sid] = {
         "x": spawn_x,
         "y": spawn_y,
