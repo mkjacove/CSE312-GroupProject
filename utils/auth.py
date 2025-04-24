@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, abort,
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import users_collection
 import re
+from flask import current_app
 
 auth_bp = Blueprint("auth", __name__, url_prefix="")
 
@@ -22,12 +23,15 @@ def login():
         user = users_collection.find_one({"username": username})
         if user and check_password_hash(user["password"], password):
             print(f"✅ Logged in as {username}")
+            current_app.logger.info(f"{username} successfully logged in")
             session.permanent = True
             session["username"] = user["username"]
             session["avatar"] = user.get("avatar", "user.webp")
             return "logged in", 200
         else:
             print("❌ Invalid login")
+            current_app.logger.info(f"A user tried to log in as {username}, but the username or password was incorrect")
+
             return "Invalid username or password.", 401
 
     return render_template("login.html")
@@ -39,13 +43,18 @@ def register():
         password = request.form.get("password")
 
         if users_collection.find_one({"username": username}):
+
             print("❌ Username already exists")
+            current_app.logger.info(f"{username} tried to register, but that username already exists")
+
             # Return HTTP 400 Bad Request for this error
             return "Username already exists.", 400
 
         valid, message = is_valid_password(password)
         if not valid:
             print(f"❌ {message}")
+            current_app.logger.info(f"{username} tried to register, but their password was invalid")
+
             # Return HTTP 400 Bad Request for invalid password
             return message, 400
 
@@ -53,6 +62,8 @@ def register():
         users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp"})
 
         print(f"✅ Registered user: {username}")
+        current_app.logger.info(f"{username} successfully registered")
+
         return "User is registered now!", 200
 
     return render_template("register.html")
@@ -62,5 +73,7 @@ def logout():
     username = session.get("username")
     if username:
         print(f"✅ User logged out: {username}")
+        current_app.logger.info(f"{username} logged out successfully")
+
     session.clear()
     return redirect(url_for("home"))
