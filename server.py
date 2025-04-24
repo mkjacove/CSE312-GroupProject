@@ -3,21 +3,46 @@ import uuid
 from datetime import timedelta, datetime
 from flask import (
     Flask, request, render_template, jsonify,
-    session, redirect, url_for, send_from_directory
+    session, redirect, url_for, send_from_directory,
+    g
 )
 from flask_socketio import SocketIO, emit
-from utils.auth import auth_bp
 from utils.db import users_collection
 import imageio.v3 as iio
 import random
+import logging
+import traceback
+import re
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
-app.register_blueprint(auth_bp)
 app.secret_key = "very_secret_key"
 app.permanent_session_lifetime = timedelta(days=1)
 app.config.update(SESSION_COOKIE_HTTPONLY=True)
 
+log_path = "/app/~log.log"
+if not os.path.exists(log_path):
+    open(log_path, "a").close()
+
+log_handler = logging.FileHandler(log_path)
+log_handler.setLevel(logging.INFO)
+log_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+app.logger.addHandler(log_handler)
+app.logger.setLevel(logging.INFO)
+
+complete_log_path = "/app/~complete.log"
+if not os.path.exists(complete_log_path):
+    open(complete_log_path, "w").close()
+
+complete_log_handler = logging.FileHandler(complete_log_path)
+complete_log_handler.setLevel(logging.INFO)
+complete_log_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+complete_logger = logging.getLogger("complete_logger")
+complete_logger.addHandler(complete_log_handler)
+complete_logger.setLevel(logging.INFO)
+
+from utils.auth import auth_bp
+app.register_blueprint(auth_bp)
 
 # Serve images
 @app.route("/images/<filename>")
@@ -246,6 +271,85 @@ def ws_disconnect():
     sid = request.sid
     players.pop(sid, None)
     emit('players', {'players': players}, namespace='/game', broadcast=True)
+
+@app.before_request
+def log_request_info():
+    user = session.get("username", "guest")
+    ip = request.remote_addr
+    method = request.method
+    path = request.path
+    status = "N/A"
+    g.log_prefix = f"{user}@{ip} - {method} {path}"
+
+@app.after_request
+def log_response_info(response):
+    status = response.status_code
+    app.logger.info(f"{g.log_prefix} -> {status}")
+    return response
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    with open("/app/~error.log", "a") as f:
+        f.write(f"\n--- ERROR ---\n")
+        f.write(traceback.format_exc())
+    return "Internal Server Error", 500
+
+@app.route("/force-error")
+def force_error():
+    raise RuntimeError("This is a test error!")
+
+@app.before_request
+def log_raw_request():
+    method = request.method
+    path = request.full_path
+    headers = dict(request.headers)
+    ip = request.remote_addr
+
+    headers.pop("Authorization", None)
+    if "Cookie" in headers:
+        # Remove auth token from cookies
+        headers["Cookie"] = re.sub(r"auth_token=[^;]+", "auth_token=***", headers["Cookie"])
+
+    body = request.get_data()
+    try:
+        body_text = body.decode("utf-8")
+        if "password" in path or "login" in path or "register" in path:
+            body_text = "[BODY REDACTED]"
+    except UnicodeDecodeError:
+        body_text = "[BINARY DATA OMITTED]"
+
+    body_text = body_text[:2048]
+
+    complete_logger.info(
+        f"--- Incoming Request from {ip} ---\n"
+        f"{method} {path}\n"
+        f"Headers:\n{headers}\n"
+        f"Body:\n{body_text}\n"
+        f"--- End Request ---"
+    )
+
+@app.after_request
+def log_raw_response(response):
+    headers = dict(response.headers)
+
+    if not response.direct_passthrough:
+        try:
+            body = response.get_data()
+            body_text = body.decode("utf-8")[:2048]
+        except UnicodeDecodeError:
+            body_text = "[BINARY DATA OMITTED]"
+    else:
+        body_text = "[RESPONSE IN DIRECT PASSTHROUGH MODE]"
+
+    complete_logger.info(
+        f"--- Outgoing Response ---\n"
+        f"Status: {response.status}\n"
+        f"Headers:\n{headers}\n"
+        f"Body:\n{body_text}\n"
+        f"--- End Response ---"
+    )
+    return response
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080, allow_unsafe_werkzeug=True)
