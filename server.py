@@ -157,7 +157,9 @@ def handle_move(data):
     if tile_states[b].get(key) == 2:
         if b < 3:
             p['board_level'] += 1
+            emit('chat', {'text': f"{p['username']} fell to Board {b+1}!"}, namespace='/game', broadcast=True)
         else:
+            emit('chat', {'text': f"{p['username']} was eliminated!"}, namespace='/game', broadcast=True)
             emit('eliminated', {'redirect': url_for('home')}, room=sid)
 
     emit('players', {'players': players}, namespace='/game', broadcast=True)
