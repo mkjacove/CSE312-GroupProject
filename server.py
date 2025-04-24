@@ -8,22 +8,26 @@ from flask import (
 from flask_socketio import SocketIO, emit
 from utils.auth import auth_bp
 from utils.db import users_collection
-import imageio.v3 as iio
+from PIL import Image
 import random
 
 #testaccount, theone, pass = T1h2e3%%One
+# ─── Flask setup ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.register_blueprint(auth_bp)
 app.secret_key = "very_secret_key"
 app.permanent_session_lifetime = timedelta(days=1)
 app.config.update(SESSION_COOKIE_HTTPONLY=True)
 
+# ─── HTTP ROUTES ──────────────────────────────────────────────────────────────
 
-# Serve images
 @app.route("/images/<filename>")
 def serve_image(filename):
     return send_from_directory(
-        os.path.join(app.root_path, "images/"),filename)
+        os.path.join(app.root_path, "images"),
+        filename
+    )
+
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -38,32 +42,24 @@ def avatar():
         if not file or file.filename == "":
             return "No file uploaded", 400
 
-        img = iio.imread(file.stream)
-
-        # build unique filename
         ext = os.path.splitext(file.filename)[1].lower()
         unique_name = f"{uuid.uuid4()}{ext}"
 
-        # Square crop
-        h, w = img.shape[:2]
-        side_length = min(h, w)
-        cropped = img[0:side_length, 0:side_length]
+        file_path = os.path.join(app.root_path, "images", unique_name)
+        img = Image.open(file.stream).convert("RGBA")
+        w, h = img.size
+        side = min(w, h)
+        cropped = img.crop((0, 0, side, side))
+        cropped.save(file_path)
 
-        # Save
-        file_path = os.path.join(app.root_path, "images/", unique_name)
-
-        iio.imwrite(file_path, cropped)
-
-        # update session & DB
         session["avatar"] = unique_name
         users_collection.update_one(
             {"username": session["username"]},
-            {"$set": {"avatar": unique_name}})
-
+            {"$set": {"avatar": unique_name}}
+        )
         return redirect(url_for("avatar"))
 
     return render_template("change-avatar.html")
-
 
 @app.route("/leaderboard")
 def leaderboard():
@@ -105,38 +101,31 @@ def get_current_user():
         })
     return jsonify({"id": None})
 
-# ---------- WebSocket setup for /game namespace ----------
+# ─── WebSocket setup for /game namespace ──────────────────────────────────────
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# Game grid settings (must match client!)
+# Game grid constants (must match client)
 TILE_SIZE  = 50
 GRID_COLS  = 500
 GRID_ROWS  = 500
 GRID_WIDTH = TILE_SIZE * GRID_COLS
 GRID_HEIGHT= TILE_SIZE * GRID_ROWS
 
-# Time interval for state transition (2 seconds)
+# Delay for tiles to transition 1→2
 TILE_STATE_TRANSITION_DELAY = timedelta(seconds=2)
 
-# In‑memory game state
-tile_states = {
-    1: {},
-    2: {},
-    3: {}
-}
-tile_timestamps = {
-    1: {},
-    2: {},
-    3: {}
-}
-players         = {}  # sid → { x, y, username, board_level, avatar }
+# In‑memory per‑board state
+tile_states     = {1: {}, 2: {}, 3: {}}
+tile_timestamps = {1: {}, 2: {}, 3: {}}
+players         = {}  # sid → { x, y, username, avatar, board_level }
 
 def _me():
     return {
         "username": session.get("username"),
         "avatar":   session.get("avatar", "user.webp")
     }
+
 
 def find_random_white_tile(board_level):
     """Find a random (x, y) on a white tile (state == 0)."""
@@ -156,96 +145,76 @@ def ws_connect():
     sid = request.sid
 
     spawn_x, spawn_y = find_random_white_tile(1)
+    print("burger ", spawn_x, spawn_y)
     players[sid] = {
         "x": spawn_x,
         "y": spawn_y,
-        "board_level": 1,
+        "board_level": 1,  # Always spawn on the top board (board_level 1)
         **_me()
     }
+    
+    # send nested tileStates: {1:{...}, 2:{...}, 3:{...}}
     emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
     sid = request.sid
-    if sid not in players:
-        players[sid] = {'x': 0, 'y': 0, **_me()}
-    players[sid].update({
-        'x': data['x'],
-        'y': data['y'],
-        **_me()
-    })
+    p = players.get(sid)
+    if not p:
+        return
+    p['x'], p['y'] = data['x'], data['y']
+
+    # check death on black tile
+    key = f"{int(p['x']//TILE_SIZE)},{int(p['y']//TILE_SIZE)}"
+    b   = p['board_level']
+    if tile_states[b].get(key) == 2:
+        if b < 3:
+            p['board_level'] += 1
+            emit('chat', {'text': f"{p['username']} fell to Board {b+1}!"}, namespace='/game', broadcast=True)
+        else:
+            emit('chat', {'text': f"{p['username']} was eliminated!"}, namespace='/game', broadcast=True)
+            emit('eliminated', {'redirect': url_for('home')}, room=sid)
+
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
 @socketio.on('tile', namespace='/game')
 def handle_tile(data):
-    sid = request.sid
-    player = players.get(sid)
-    if not player:
-        return
+    key   = data['key']
+    board = data.get('board', 1)
+    now   = datetime.now()
 
-    board = player.get('board_level', 1)
-    key = data['key']
-    now = datetime.now()
-
+    # 0 → 1
     if tile_states[board].get(key, 0) == 0:
-        tile_states[board][key] = 1
+        tile_states[board][key]     = 1
         tile_timestamps[board][key] = now
-        emit('tile-update', {'key': key, 'state': 1, 'board': board},
+        emit('tile-update',
+             {'key': key, 'state': 1, 'board': board},
              namespace='/game', broadcast=True)
 
-    # 1 ➔ 2 after delay
-    due = []
-    for k, st in list(tile_states[board].items()):
-        if st == 1 and now - tile_timestamps[board].get(k, now) >= TILE_STATE_TRANSITION_DELAY:
-            tile_states[board][k] = 2
-            del tile_timestamps[board][k]
-            due.append(k)
+    # 1 → 2 after delay on all boards
+    for b in (1, 2, 3):
+        due = []
+        for k, st in list(tile_states[b].items()):
+            ts = tile_timestamps[b].get(k)
+            if st == 1 and ts and now - ts >= TILE_STATE_TRANSITION_DELAY:
+                tile_states[b][k] = 2
+                del tile_timestamps[b][k]
+                due.append(k)
+        for k in due:
+            emit('tile-update',
+                 {'key': k, 'state': 2, 'board': b},
+                 namespace='/game', broadcast=True)
 
-    for k in due:
-        emit('tile-update', {'key': k, 'state': 2, 'board': board},
-             namespace='/game', broadcast=True)
-
-    # re‑broadcast clicked tile
-    emit('tile-update', {'key': key, 'state': tile_states[board].get(key, 0), 'board': board},
+    # re‑broadcast the clicked tile
+    emit('tile-update',
+         {'key': key, 'state': tile_states[board].get(key, 0), 'board': board},
          namespace='/game', broadcast=True)
-
-@socketio.on('reset', namespace='/game')
-def handle_reset():
-    sid = request.sid
-    player = players.get(sid)
-    if not player:
-        return
-
-    current_board = player.get('board_level', 1)
-    if current_board < 3:
-        # move player to next board
-        players[sid]['board_level'] = current_board + 1
-
-        # reposition player back to a random location
-        spawn_x, spawn_y = find_random_white_tile(board_level=current_board + 1)
-        players[sid]['x'] = spawn_x
-        players[sid]['y'] = spawn_y
-
-        # tell client maybe (optional: pop-up "Level 2!")
-        emit('chat', {'text': f"{player['username']} advanced to Board {current_board+1}!"}, namespace='/game', broadcast=True)
-
-    else:
-        # eliminate player
-        emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
-
-        # notify *only* the eliminated player to redirect
-        emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
-
-        players.pop(sid, None)
-        emit('players', {'players': players}, namespace='/game', broadcast=True)
-
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
-    sid = request.sid
-    players.pop(sid, None)
+    players.pop(request.sid, None)
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=8080,  allow_unsafe_werkzeug=True)

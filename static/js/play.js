@@ -1,4 +1,3 @@
-// play.js
 console.log("play.js loaded");
 
 // --- grab elements + contexts
@@ -12,7 +11,6 @@ const chatLog       = document.getElementById("chat-log");
 function resizeCanvas() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  // fixed-size minimap
   miniMapCanvas.width  = 200;
   miniMapCanvas.height = 200;
 }
@@ -20,120 +18,120 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 // --- game constants + state
-const tileSize   = 50,
-      gridCols   = 500,
-      gridRows   = 500,
+const tileSize = 50,
+      gridCols = 500,
+      gridRows = 500,
       gridWidth  = tileSize * gridCols,
       gridHeight = tileSize * gridRows;
+
 let playerX = gridWidth/2,
     playerY = gridHeight/2;
 let cameraX = 0,
     cameraY = 0;
 let keys = {},
-    playerSpeed = 5;
+    playerSpeed = 3;
 let avatarImg = null;
-let tileStates = { 1: {}, 2: {}, 3: {} };   // per board
-let otherPlayers = {};   // { sid: { x,y,username,avatarImg } }
+let tileStates = {1:{},2:{},3:{}};
+let otherPlayers = {};
 let playerBoardLevel = 1;
 let gameStarted = false;
-
+const avatarCache    = {};
+const activeRedTiles = {1: new Set(), 2: new Set(), 3: new Set()};
 
 // --- input handling
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup",   e => keys[e.key] = false);
 
-// --- load avatar from globals
+// --- load own avatar
 if (window.PLAYER_AVATAR) {
   avatarImg = new Image();
   avatarImg.src = `/images/${window.PLAYER_AVATAR}`;
-
-  avatarImg.onerror = () => {
-    console.error("Failed to load avatar image!");
-    avatarImg.src = `/images/user.webp`;  // fallback to default circle
-  };
+  avatarImg.onerror = () => avatarImg.src = `/images/user.webp`;
 }
 
 // --- Socket.IO setup
 const socket = io('/game', { transports: ['websocket'] });
 
-socket.on("connect", () => {
-  console.log("Socket connected:", socket.id);
-});
-socket.on("disconnect", () => {
-  console.log("Socket disconnected");
-});
-
-socket.on("eliminated", (data) => {
-    alert("You've been eliminated!");
-    window.location.href = data.redirect;
+socket.on("connect",    () => console.log("Socket connected:", socket.id));
+socket.on("disconnect", () => console.log("Socket disconnected"));
+socket.on("eliminated", data => {
+  alert("You've lost!");
+  window.location.href = data.redirect;
 });
 
-// initial full‑board snapshot
-socket.on('tile-init', data => {
-  tileStates = { 1: {}, 2: {}, 3: {} }; // reset clean
-
-  if (data.tileStates) {
-    for (let boardNum in data.tileStates) {
-      tileStates[boardNum] = data.tileStates[boardNum];
+// ─── INITIAL TILES ──────────────────────────────────────────────────────────
+socket.on("tile-init", data => {
+  tileStates = {1:{},2:{},3:{}};
+  for (let b = 1; b <= 3; b++) {
+    for (const key in data.tileStates[b]||{}) {
+      const st = data.tileStates[b][key];
+      tileStates[b][key] = st;
+      if (st === 1) activeRedTiles[b].add(key);
     }
   }
 });
 
-// one‑off tile updates
-socket.on('tile-update', msg => {
-  const currentBoard = getPlayerBoardLevel(); // Get current board level (1, 2, or 3)
-
-  // Only update the current board
-  if (msg.board === currentBoard) {
-    if (msg.state === 0) {
-      delete tileStates[currentBoard][msg.key];
-    } else {
-      tileStates[currentBoard][msg.key] = msg.state;
-    }
-    draw(); // Re-render tiles after update
+// ─── PER-TILE UPDATES ───────────────────────────────────────────────────────
+socket.on("tile-update", msg => {
+  const { key, state, board } = msg;
+  if (state === 0) {
+    delete tileStates[board][key];
+    activeRedTiles[board].delete(key);
+  } else {
+    tileStates[board][key] = state;
+    if (state === 1) activeRedTiles[board].add(key);
+    else activeRedTiles[board].delete(key);
   }
 });
 
-
-// players list (add/update/remove)
+// ─── PLAYER LIST ───────────────────────────────────────────────────────────
 socket.on("players", msg => {
   otherPlayers = {};
   for (const id in msg.players) {
+    const d = msg.players[id];
+
     if (id === socket.id) {
-      playerX = msg.players[id].x;
-      playerY = msg.players[id].y;
-      playerBoardLevel = msg.players[id].board_level || 1;
+      // only update board‐level for ourselves
+      if (playerX === gridWidth/2) {
+        playerX = d.x;  // Update only if the position has changed
+      }
+
+      if (playerY === gridHeight/2) {
+        playerY = d.y;  // Update only if the position has changed
+      }
+      playerBoardLevel = d.board_level;
       continue;
     }
-    const d = msg.players[id];
-    const img = new Image();
-    img.src = `/images/${d.avatar}`;
-    img.onerror = () => {
-      console.error("Failed to load avatar image!");
-      img.src = `/images/user.webp`;  // fallback to default circle
-    };
-    otherPlayers[id] = { ...d, avatarImg: img };
-  }
 
+    if (!avatarCache[d.avatar]) {
+      const img = new Image();
+      img.src = `/images/${d.avatar}`;
+      img.onerror = () => img.src = `/images/user.webp`;
+      avatarCache[d.avatar] = img;
+    }
+    const prev = otherPlayers[id] || { x: d.x, y: d.y };
+    otherPlayers[id] = {
+      ...d,
+      avatarImg: avatarCache[d.avatar],
+      x: prev.x, y: prev.y,
+      targetX: d.x, targetY: d.y
+    };
+  }
   if (!gameStarted) {
     gameStarted = true;
     gameLoop();
   }
 });
 
-// optional chat handler
 socket.on("chat", msg => addChatMessage(msg.text));
 
-function getPlayerBoardLevel() {
-  return playerBoardLevel;
-}
-
-// --- game update: movement + emit
+// ─── MOVE + EMIT ──────────────────────────────────────────────────────────
+let lastEmit = 0;
 function update() {
   let dx = 0, dy = 0;
-  if (keys.ArrowUp || keys.w)    dy -= playerSpeed;
-  if (keys.ArrowDown || keys.s)  dy += playerSpeed;
-  if (keys.ArrowLeft || keys.a)  dx -= playerSpeed;
+  if (keys.ArrowUp    || keys.w) dy -= playerSpeed;
+  if (keys.ArrowDown  || keys.s) dy += playerSpeed;
+  if (keys.ArrowLeft  || keys.a) dx -= playerSpeed;
   if (keys.ArrowRight || keys.d) dx += playerSpeed;
 
   playerX = Math.max(0, Math.min(playerX + dx, gridWidth));
@@ -144,20 +142,27 @@ function update() {
   cameraY = Math.max(0, Math.min(playerY + tileSize/2 - canvas.height/2,
                                   gridHeight - canvas.height));
 
-  socket.emit("move", { x: playerX, y: playerY });
+  const now = Date.now();
+  if (now - lastEmit > 100) {
+    socket.emit("move", { x: playerX, y: playerY });
+    lastEmit = now;
+  }
+
+  // smooth other players
+  for (const id in otherPlayers) {
+    const p = otherPlayers[id], s = 0.1;
+    p.x += (p.targetX - p.x) * s;
+    p.y += (p.targetY - p.y) * s;
+  }
 }
 
-// --- draw loop
+// ─── DRAW LOOP ─────────────────────────────────────────────────────────────
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   ctx.save();
     ctx.translate(-cameraX, -cameraY);
 
-    // Get current board level from server (you'll receive this via `players`)
-    const currentBoard = getPlayerBoardLevel(); // This function returns player's current board level (1, 2, or 3)
-
-    // draw tiles for the current board
+    const B = playerBoardLevel;
     const startCol = Math.floor(cameraX / tileSize),
           endCol   = Math.ceil((cameraX + canvas.width)  / tileSize);
     const startRow = Math.floor(cameraY / tileSize),
@@ -165,145 +170,117 @@ function draw() {
 
     for (let r = startRow; r < endRow; r++) {
       for (let c = startCol; c < endCol; c++) {
-        const x = c * tileSize,
-              y = r * tileSize,
-              k = `${c},${r}`;
-        const state = tileStates[currentBoard][k] || 0;  // Use the correct board's state
-
-        // Fill background with different colors based on the board
-        if (currentBoard === 1) {
-          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
-                       : state === 2 ? "#000"  // Black for the tiles that should cause progression
-                       :               "#fff4dd"; // light orange for empty tiles
-
-        } else if (currentBoard === 2) {
-          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
-                       : state === 2 ? "#000"  // Black for the tiles that should cause progression
-                       :               "#FFF"; // White for empty tiles
-
-        } else if (currentBoard === 3) {
-          ctx.fillStyle = state === 1  ? "#F00"  // Red for painted tiles
-                       : state === 2 ? "#000"  // Black for the tiles that should cause progression
-                       :               "#e2f2ff"; // light blue for empty tiles
-        }
-
+        const k = `${c},${r}`,
+              s = tileStates[B][k] || 0,
+              x = c * tileSize,
+              y = r * tileSize;
+        // choose fill
+        ctx.fillStyle = (
+          s === 1 ? "#F00" :
+          s === 2 ? "#000" :
+          (B === 1 ? "#fff4dd" : B === 2 ? "#FFF" : "#e2f2ff")
+        );
         ctx.fillRect(x, y, tileSize, tileSize);
         ctx.strokeStyle = "#CCC";
         ctx.strokeRect(x, y, tileSize, tileSize);
       }
     }
 
-    // draw self (avatar)
     drawPlayer(playerX, playerY, window.PLAYER_USERNAME, avatarImg);
-
-    // draw others (players)
     for (const id in otherPlayers) {
       const p = otherPlayers[id];
       drawPlayer(p.x, p.y, p.username, p.avatarImg);
     }
   ctx.restore();
 
-  // --- draw minimap
-  const cols   = gridCols,
-        rows   = gridRows,
-        mapW   = miniMapCanvas.width,
-        mapH   = miniMapCanvas.height,
-        scaleX = mapW / cols,
-        scaleY = mapH / rows;
+  // minimap
+  const mapW = miniMapCanvas.width,
+        mapH = miniMapCanvas.height,
+        sx = mapW / gridCols,
+        sy = mapH / gridRows;
   miniCtx.clearRect(0, 0, mapW, mapH);
-
-  // background
   miniCtx.fillStyle = "#FFF";
   miniCtx.fillRect(0, 0, mapW, mapH);
 
-  // painted tiles (red=1, black=2)
-  for (const key in tileStates[currentBoard]) {  // Filter by current board
-    const [c, r] = key.split(',').map(Number),
-          st     = tileStates[currentBoard][key];
-    if (st === 1)       miniCtx.fillStyle = "#F00";
-    else if (st === 2)  miniCtx.fillStyle = "#000";
-    else                continue;
-    miniCtx.fillRect(c * scaleX, r * scaleY, scaleX, scaleY);
+  for (const key in tileStates[B]) {
+    const st = tileStates[B][key];
+    if (st === 1 || st === 2) {
+      const [c,r] = key.split(",").map(Number);
+      miniCtx.fillStyle = st === 1 ? "#F00" : "#000";
+      miniCtx.fillRect(c * sx, r * sy, sx, sy);
+    }
   }
 
-  // player dot (on minimap)
-  const cellX = (playerX + tileSize / 2) / tileSize,
-        cellY = (playerY + tileSize / 2) / tileSize;
+  const dotX = (playerX + tileSize/2)/tileSize * sx,
+        dotY = (playerY + tileSize/2)/tileSize * sy;
   miniCtx.fillStyle = "#0F0";
   miniCtx.beginPath();
-  miniCtx.arc(cellX * scaleX, cellY * scaleY, 5, 0, 2 * Math.PI);
+  miniCtx.arc(dotX, dotY, 5, 0, 2*Math.PI);
   miniCtx.fill();
 }
 
-
-// draw a single player avatar+name (with border)
 function drawPlayer(x, y, username, img) {
-  const radius = tileSize * 0.4,
+  const r  = tileSize * 0.4,
         cx = x + tileSize/2,
         cy = y + tileSize/2;
-
-  // avatar circle
   if (img && img.complete) {
     ctx.save();
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+      ctx.arc(cx, cy, r, 0, 2*Math.PI);
       ctx.clip();
-      ctx.drawImage(img, cx-radius, cy-radius, radius*2, radius*2);
+      ctx.drawImage(img, cx-r, cy-r, r*2, r*2);
     ctx.restore();
   } else {
     ctx.fillStyle = "#3498db";
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+    ctx.arc(cx, cy, r, 0, 2*Math.PI);
     ctx.fill();
   }
+  ctx.strokeStyle = "#31e700";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r+1, 0, 2*Math.PI);
+  ctx.stroke();
 
-  // Draw circle border
-  ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 1, 0, Math.PI * 2); // slightly larger
-    ctx.closePath();
-    ctx.strokeStyle = "#31e700"; // border color
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  ctx.restore();
-
-  // username label
   ctx.fillStyle = "#31e700";
-  ctx.font = "16px Arial";
+  ctx.font      = "16px Arial";
   ctx.textAlign = "center";
-  ctx.fillText(username, cx, cy - radius - 10);
+  ctx.fillText(username, cx, cy - r - 10);
 }
 
-// helper to append chat messages
 function addChatMessage(msg) {
-  const div = document.createElement("div");
-  div.textContent = msg;
-  chatLog.appendChild(div);
+  const d = document.createElement("div");
+  d.textContent = msg;
+  chatLog.appendChild(d);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-// emit painting every 100ms
+// ─── PAINT CURRENT CELL ────────────────────────────────────────────────────
 setInterval(() => {
-  const col = Math.floor((playerX + tileSize/2) / tileSize);
-  const row = Math.floor((playerY + tileSize/2) / tileSize);
-  const key = `${col},${row}`;
+  const col = Math.floor((playerX + tileSize/2)/tileSize),
+        row = Math.floor((playerY + tileSize/2)/tileSize),
+        key = `${col},${row}`;
+  const b   = playerBoardLevel;
+  const st  = tileStates[b][key] || 0;
 
-  const currentBoard = getPlayerBoardLevel(); // <--- fix: get current board
-  const state = tileStates[currentBoard][key] || 0; // <--- fix: access correct board's tile
-
-  if (state === 2) {
-    // You stepped on a black tile!
-    socket.emit("reset"); // <--- tell server to reset
-    return; // stop here so you don't keep painting
+  if (st === 2) {
+    socket.emit("reset");
+  } else {
+    socket.emit("tile", { key, board: b });
   }
-
-  socket.emit("tile", { key });
 }, 100);
 
-// start game loop
+// ─── RE-EMIT ALL RED TILES EVERY SECOND ─────────────────────────────────────
+setInterval(() => {
+  for (let b = 1; b <= 3; b++) {
+    for (const key of activeRedTiles[b]) {
+      socket.emit("tile", { key, board: b });
+    }
+  }
+}, 1000);
+
 function gameLoop() {
   update();
   draw();
   requestAnimationFrame(gameLoop);
 }
-// gameLoop();
