@@ -104,12 +104,6 @@ def achievements():
         return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
 
-@app.route("/direct-messaging")
-def messaging():
-    if "username" not in session:
-        return redirect(url_for("home", error="not_signed_in"))
-    return render_template("direct-messaging.html")
-
 @app.route("/play")
 def play():
     if "username" not in session:
