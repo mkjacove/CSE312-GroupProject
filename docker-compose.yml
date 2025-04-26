@@ -1,25 +1,17 @@
 services:
   mongo:
     image: mongo:4.2.5
-    # Secure
-    expose:
-      - "27017"
-    # Insecure
-    #ports:
-    #  - "27017:27017"
   myapp3:
     build: .
     environment:
       WAIT_HOSTS: mongo:27017
-    expose:
-      - "8000"
     volumes:
       - .:/app
+    ports:
+      - "8080:8080"
   nginx:
     image: nginx:latest
-    container_name: flask_nginx
-    ports:
-      - "8080:80"
+    container_name: flask_nginx_service
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/entrypoint.sh:/entrypoint.sh:ro
