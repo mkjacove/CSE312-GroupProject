@@ -326,7 +326,7 @@ def log_raw_request():
         f"{method} {path}\n"
         f"Headers:\n{headers}\n"
         f"Body:\n{body_text}\n"
-        f"--- End Request ---"
+        f"--- End Request ---\n"
     )
 
 @app.after_request
@@ -347,7 +347,7 @@ def log_raw_response(response):
         f"Status: {response.status}\n"
         f"Headers:\n{headers}\n"
         f"Body:\n{body_text}\n"
-        f"--- End Response ---"
+        f"--- End Response ---\n"
     )
     return response
 
