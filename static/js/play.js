@@ -1,4 +1,5 @@
 console.log("play.js loaded");
+let myAliveSeconds = 0;
 
 // --- grab elements + contexts
 const canvas        = document.getElementById("gameCanvas");
@@ -91,15 +92,17 @@ socket.on("players", msg => {
     const d = msg.players[id];
 
     if (id === socket.id) {
-      // only update board‐level for ourselves
       if (playerX === gridWidth/2) {
-        playerX = d.x;  // Update only if the position has changed
+        playerX = d.x;
       }
-
       if (playerY === gridHeight/2) {
-        playerY = d.y;  // Update only if the position has changed
+        playerY = d.y;
       }
       playerBoardLevel = d.board_level;
+
+      // Update survival time based on server
+      myAliveSeconds = d.alive_seconds || 0;
+
       continue;
     }
 
@@ -120,10 +123,28 @@ socket.on("players", msg => {
   if (!gameStarted) {
     gameStarted = true;
     gameLoop();
+    updateSurvivalTimerUI();
   }
 });
 
 socket.on("chat", msg => addChatMessage(msg.text));
+
+socket.on("top-players", data => {
+  const list = document.getElementById("leaderboard-list");
+  list.innerHTML = "";
+  for (const player of data) {
+    const li = document.createElement("li");
+    li.textContent = `${player.username}: ${player.seconds}s`;
+    list.appendChild(li);
+  }
+});
+
+socket.on("time-until-reset", data => {
+  const el = document.getElementById("reset-seconds");
+  if (el) {
+    el.textContent = data.seconds;
+  }
+});
 
 // ─── MOVE + EMIT ──────────────────────────────────────────────────────────
 let lastEmit = 0;
@@ -279,8 +300,17 @@ setInterval(() => {
   }
 }, 1000);
 
+function updateSurvivalTimerUI() {
+  const el = document.getElementById("timer-seconds");
+  if (el) {
+    el.textContent = myAliveSeconds;
+  }
+  requestAnimationFrame(updateSurvivalTimerUI);
+}
+
 function gameLoop() {
   update();
   draw();
   requestAnimationFrame(gameLoop);
 }
+

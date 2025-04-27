@@ -13,6 +13,7 @@ import random
 import logging
 import traceback
 import re
+from threading import Timer
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
@@ -43,6 +44,9 @@ complete_logger.setLevel(logging.INFO)
 
 from utils.auth import auth_bp
 app.register_blueprint(auth_bp)
+
+reset_interval_seconds = 300  # 5 minutes
+time_until_reset = reset_interval_seconds
 
 # Serve images
 @app.route("/images/<filename>")
@@ -156,6 +160,63 @@ tile_timestamps = {
     3: {}
 }
 players         = {}  # sid → { x, y, username, board_level, avatar }
+player_start_times = {}  # sid -> datetime
+top_survivors = []       # final top survivors after elimination
+
+def update_alive_times():
+    now = datetime.now()
+    live_top_survivors = []
+    for sid, start_time in player_start_times.items():
+        if sid in players:
+            alive_seconds = int((now - start_time).total_seconds())
+            players[sid]["alive_seconds"] = alive_seconds
+            live_top_survivors.append({
+                "username": players[sid]["username"],
+                "seconds": alive_seconds
+            })
+
+    live_top_survivors.sort(key=lambda x: -x["seconds"])
+    live_top_survivors = live_top_survivors[:10]
+
+    socketio.emit('top-players', live_top_survivors, namespace='/game')
+
+def alive_update_loop():
+    global time_until_reset
+    update_alive_times()
+
+    # Countdown
+    time_until_reset -= 1
+    if time_until_reset < 0:
+        time_until_reset = reset_interval_seconds  # Reset timer after game reset
+
+    # Send time left to all clients
+    socketio.emit('time-until-reset', {'seconds': time_until_reset}, namespace='/game')
+
+    Timer(1.0, alive_update_loop).start()
+
+alive_update_loop()  # Start looping when server boots
+
+def reset_game():
+    global tile_states, tile_timestamps, players, player_start_times
+
+    tile_states = {1: {}, 2: {}, 3: {}}
+    tile_timestamps = {1: {}, 2: {}, 3: {}}
+
+    for sid in list(players.keys()):
+        socketio.emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
+
+    players.clear()
+    player_start_times.clear()
+
+    print("[Server] Board reset and all players kicked.")
+
+def game_reset_loop():
+    global time_until_reset
+    reset_game()
+    time_until_reset = reset_interval_seconds  # Reset the timer
+    Timer(reset_interval_seconds, game_reset_loop).start()
+
+game_reset_loop()  # Start the loop at server startup
 
 def _me():
     return {
@@ -180,6 +241,7 @@ def find_random_white_tile(board_level):
 def ws_connect():
     sid = request.sid
 
+    player_start_times[sid] = datetime.now()
     spawn_x, spawn_y = find_random_white_tile(1)
     players[sid] = {
         "x": spawn_x,
@@ -269,6 +331,16 @@ def handle_reset():
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
     sid = request.sid
+    start_time = player_start_times.pop(sid, None)
+    if start_time:
+        survival_seconds = (datetime.now() - start_time).total_seconds()
+        username = players.get(sid, {}).get("username", "Unknown")
+        top_survivors.append({
+            "username": username,
+            "seconds": round(survival_seconds)
+        })
+        top_survivors.sort(key=lambda x: -x["seconds"])
+        top_survivors[:] = top_survivors[:10]
     players.pop(sid, None)
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
