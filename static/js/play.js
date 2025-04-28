@@ -65,12 +65,15 @@ socket.on("connect",    () => console.log("Socket connected:", socket.id));
 socket.on("disconnect", () => console.log("Socket disconnected"));
 socket.on("eliminated", data => {
   const message = data.message || "You've lost!";
+
+  // Set the winner message
   document.getElementById("winner-message").textContent = message;
   document.getElementById("winner-modal").classList.remove("hidden");
 
-  document.getElementById("winner-ok").onclick = () => {
+  // Automatically redirect after 2 seconds
+  setTimeout(() => {
     window.location.href = data.redirect;
-  };
+  }, 2000);
 });
 
 // ─── INITIAL TILES ──────────────────────────────────────────────────────────
