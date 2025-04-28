@@ -117,7 +117,15 @@ socket.on("players", msg => {
       targetX: d.x, targetY: d.y
     };
   }
+  // if (!gameStarted) {
+  //   gameStarted = true;
+  //   gameLoop();
+  // }
+});
+
+socket.on("game_start", () => {
   if (!gameStarted) {
+    alert("The game is starting!");
     gameStarted = true;
     gameLoop();
   }

@@ -44,6 +44,10 @@ complete_logger.setLevel(logging.INFO)
 from utils.auth import auth_bp
 app.register_blueprint(auth_bp)
 
+lobby = []
+game_in_progress = False
+MIN_PLAYERS = 2  # Minimum number of players to start the game
+
 # Serve images
 @app.route("/images/<filename>")
 def serve_image(filename):
@@ -172,15 +176,42 @@ def find_random_white_tile(board_level):
 
 @socketio.on('connect', namespace='/game')
 def ws_connect():
+    global game_in_progress
+
+    if game_in_progress:
+        emit('chat', {'text': "The game is already in progress. Please wait for the next round."}, namespace='/game')
+        return
+
     sid = request.sid
 
-    spawn_x, spawn_y = find_random_white_tile(1)
-    players[sid] = {
-        "x": spawn_x,
-        "y": spawn_y,
-        "board_level": 1,
-        **_me()
-    }
+    player = {'sid': sid, 'username': f"Player {len(lobby) + 1}"}
+    lobby.append(player)
+
+    emit('chat', {'text': f"{player['username']} has joined the lobby!"}, namespace='/game', broadcast=True)
+    # Check if the game can start (at least MIN_PLAYERS)
+    if len(lobby) >= MIN_PLAYERS:
+        start_game()
+
+def start_game():
+    global game_in_progress
+
+    if len(lobby) < MIN_PLAYERS:
+        return
+
+    game_in_progress = True
+    emit('chat', {'text': "The game is starting!"}, namespace='/game', broadcast=True)
+
+    emit('game_start', {}, namespace='/game', broadcast=True)
+
+    for player in lobby:
+        sid= player['sid']
+        spawn_x, spawn_y = find_random_white_tile(1)
+        players[sid] = {
+            "x": spawn_x,
+            "y": spawn_y,
+            "board_level": 1,
+            **_me()
+        }
     emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
@@ -258,12 +289,46 @@ def handle_reset():
 
         players.pop(sid, None)
         emit('players', {'players': players}, namespace='/game', broadcast=True)
+    if len(players) == 1:
+        winner_sid = next(iter(players))  # Get the last player standing
+        winner = players[winner_sid]
+        emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+             namespace='/game', broadcast=True)
+        reset_game()
+        return
+def reset_game():
+    global game_in_progress, lobby, players
+    game_in_progress = False  # Game is no longer in progress
+    players = {}  # Clear players data
+    lobby = []  # Clear the lobby
+
+    emit('chat', {'text': "The game has ended! Waiting for players to join the next round."}, namespace='/game',
+         broadcast=True)
 
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
+    global game_in_progress
     sid = request.sid
-    players.pop(sid, None)
+
+    if game_in_progress:
+        if sid in players:
+            players.pop(sid, None)
+
+        if len(players) == 1:
+            winner_sid = next(iter(players))
+            winner = players[winner_sid]
+            emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+                 namespace='/game', broadcast=True)
+            reset_game()
+            return
+    else:
+        for player in lobby:
+            if player['sid'] == sid:
+                lobby.remove(player)
+                emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
+                break
+
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
 @app.before_request
