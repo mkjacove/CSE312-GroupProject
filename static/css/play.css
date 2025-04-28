@@ -45,6 +45,19 @@ button:hover {
     background-color: #4a5568;
     border: 1px solid #2d3748;
   }
-  .player {
+  #gameCanvas {
+  position: relative;
+}
 
-  }
+.eliminated-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  z-index: 100;
+}

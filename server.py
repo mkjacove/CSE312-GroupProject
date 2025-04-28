@@ -157,7 +157,7 @@ tile_timestamps = {
     2: {},
     3: {}
 }
-players         = {}  # sid → { x, y, username, board_level, avatar }
+players = {}  # sid → { x, y, username, board_level, avatar }
 
 def _me():
     return {
@@ -314,17 +314,24 @@ def handle_reset():
     else:
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
-        players.pop(sid, None)
+        print(players)
+        print(lobby)
+
+        # notify *only* the eliminated player to redirect
+        emit('eliminated',  namespace='/game', to=sid)
+
+        del players[sid]
         emit('players', {'players': players}, namespace='/game', broadcast=True)
+
     if len(players) == 1:
         winner_sid = next(iter(players))  # Get the last player standing
         winner = players[winner_sid]
-        socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
-             namespace='/game')
-        socketio.emit('game_over',{'winner': winner['username']},namespace='/game')
-        socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
+        emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+             namespace='/game', broadcast=True)
+        emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid, broadcast=True)
         reset_game()
         return
+
 def reset_game():
     global game_in_progress, lobby, players
     game_in_progress = False
@@ -342,14 +349,13 @@ def ws_disconnect():
 
     if game_in_progress:
         if sid in players:
-            players.pop(sid, None)
+            del players[sid]
 
         if len(players) == 1:
             winner_sid = next(iter(players))  # Get the last player standing
             winner = players[winner_sid]
             socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                  namespace='/game')
-            socketio.emit('game_over', {'winner': winner['username']}, namespace='/game')
             socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
             reset_game()
             return
