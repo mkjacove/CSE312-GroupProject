@@ -35,6 +35,7 @@ let tileStates = {1:{},2:{},3:{}};
 let otherPlayers = {};
 let playerBoardLevel = 1;
 let gameStarted = false;
+let isEliminated = false;
 const avatarCache    = {};
 const activeRedTiles = {1: new Set(), 2: new Set(), 3: new Set()};
 
@@ -54,13 +55,21 @@ const socket = io('/game', { transports: ['websocket'] });
 
 socket.on("connect",    () => console.log("Socket connected:", socket.id));
 socket.on("disconnect", () => console.log("Socket disconnected"));
-socket.on("eliminated", data => {
-  alert("You've lost!");
-  window.location.href = data.redirect;
+socket.on("eliminated", () => {
+  alert("You’ve been eliminated. You can stay and watch who wins.");
+  isEliminated = true;
 });
 socket.on("victory", data => {
   alert("🎉 Congratulations, you won!");
   window.location.href = data.redirect;
+});
+socket.on("game_over", data => {
+  // show it in chat or as a popup
+  addChatMessage(`🏁 Game over! Winner: ${data.winner}`);
+  alert(`🏆 ${data.winner} has won the game!`);
+
+  // then redirect everyone back home (or to a “results” page)
+  window.location.href = '/';
 });
 
 socket.on("countdown", data => {
@@ -154,6 +163,7 @@ socket.on("chat", msg => addChatMessage(msg.text));
 // ─── MOVE + EMIT ──────────────────────────────────────────────────────────
 let lastEmit = 0;
 function update() {
+  if(isEliminated) return;
   let dx = 0, dy = 0;
   if (keys.ArrowUp    || keys.w) dy -= playerSpeed;
   if (keys.ArrowDown  || keys.s) dy += playerSpeed;
@@ -221,6 +231,22 @@ function draw() {
       }
     }
   ctx.restore();
+
+  if (isEliminated) {
+  // main canvas
+  ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);          // reset any translations
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';  // semi-transparent grey
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  // mini-map
+  miniCtx.save();
+    miniCtx.setTransform(1, 0, 0, 1, 0, 0);
+    miniCtx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+    miniCtx.fillRect(0, 0, miniMapCanvas.width, miniMapCanvas.height);
+  miniCtx.restore();
+}
 
   // minimap
   const mapW = miniMapCanvas.width,

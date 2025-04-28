@@ -314,18 +314,15 @@ def handle_reset():
     else:
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
-
-        # notify *only* the eliminated player to redirect
-        emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
-
         players.pop(sid, None)
         emit('players', {'players': players}, namespace='/game', broadcast=True)
     if len(players) == 1:
         winner_sid = next(iter(players))  # Get the last player standing
         winner = players[winner_sid]
-        emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
-             namespace='/game', broadcast=True)
-        emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
+        socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+             namespace='/game')
+        socketio.emit('game_over',{'winner': winner['username']},namespace='/game')
+        socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
         reset_game()
         return
 def reset_game():
@@ -352,6 +349,7 @@ def ws_disconnect():
             winner = players[winner_sid]
             socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                  namespace='/game')
+            socketio.emit('game_over', {'winner': winner['username']}, namespace='/game')
             socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
             reset_game()
             return
