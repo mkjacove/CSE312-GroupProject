@@ -262,7 +262,10 @@ function draw() {
     drawPlayer(playerX, playerY, window.PLAYER_USERNAME, avatarImg);
     for (const id in otherPlayers) {
       const p = otherPlayers[id];
-      drawPlayer(p.x, p.y, p.username, p.avatarImg);
+      if(p.board_level === playerBoardLevel)
+       {
+       drawPlayer(p.x, p.y, p.username, p.avatarImg);
+       }
     }
   ctx.restore();
 
