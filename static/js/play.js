@@ -59,6 +59,16 @@ socket.on("eliminated", data => {
   window.location.href = data.redirect;
 });
 
+socket.on("countdown", data => {
+  const cd = document.getElementById("countdown");
+  if (data.time > 0) {
+    cd.textContent = `Game starts in ${data.time}s…`;
+    cd.style.display = "block";
+  } else {
+    cd.style.display = "none";
+  }
+});
+
 // ─── INITIAL TILES ──────────────────────────────────────────────────────────
 socket.on("tile-init", data => {
   tileStates = {1:{},2:{},3:{}};

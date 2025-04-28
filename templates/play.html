@@ -67,12 +67,31 @@
         font-size: 14px;
         z-index: 15;
       }
+      #countdown {
+        color: #fff;
+        text-shadow: 0 0 5px rgba(0,0,0,0.8);
+      }
     </style>
   </head>
 
   <body>
     <div id="canvas-container">
       <button id="fullscreen-btn">Fullscreen</button>
+      <!-- countdown overlay -->
+      <div
+        id="countdown"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 3rem;
+          font-weight: bold;
+          pointer-events: none;
+          z-index: 20;
+          display: none;
+        "
+        ></div>
       <canvas id="miniMapCanvas" width="200" height="200"></canvas>
       <canvas id="gameCanvas"></canvas>
       <div id="chat-log"></div>

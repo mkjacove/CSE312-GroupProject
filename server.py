@@ -13,6 +13,10 @@ import random
 import logging
 import traceback
 import re
+from threading import Event
+
+COUNTDOWN_START = 10
+countdown_abort_event: Event | None = None
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
@@ -184,13 +188,40 @@ def ws_connect():
 
     sid = request.sid
 
-    player = {'sid': sid, 'username': f"Player {len(lobby) + 1}"}
+    player = {'sid': sid, 'username': session["username"],  'avatar': session.get("avatar", "user.webp")}
     lobby.append(player)
 
     emit('chat', {'text': f"{player['username']} has joined the lobby!"}, namespace='/game', broadcast=True)
     # Check if the game can start (at least MIN_PLAYERS)
     if len(lobby) >= MIN_PLAYERS:
-        start_game()
+        schedule_countdown()
+
+def schedule_countdown():
+    """Abort any running countdown, then start a fresh 10s countdown."""
+    global countdown_abort_event
+
+    # abort previous countdown if running
+    if countdown_abort_event:
+        countdown_abort_event.set()
+
+    # new abort-event for this countdown
+    countdown_abort_event = Event()
+    # fire off the background task
+    socketio.start_background_task(_countdown_worker, countdown_abort_event)
+
+def _countdown_worker(abort_event: Event):
+    """Emit 'countdown' every second, then call start_game() at 0."""
+    remaining = COUNTDOWN_START
+    while remaining > 0:
+        socketio.emit('countdown', {'time': remaining}, namespace='/game')
+        socketio.sleep(1)
+        if abort_event.is_set():
+            return
+        remaining -= 1
+
+    # final 0 and start
+    socketio.emit('countdown', {'time': 0}, namespace='/game')
+    start_game()
 
 def start_game():
     global game_in_progress
@@ -199,9 +230,8 @@ def start_game():
         return
 
     game_in_progress = True
-    emit('chat', {'text': "The game is starting!"}, namespace='/game', broadcast=True)
-
-    emit('game_start', {}, namespace='/game', broadcast=True)
+    socketio.emit('chat', {'text': "The game is starting!"}, namespace='/game')
+    socketio.emit('game_start', {}, namespace='/game')
 
     for player in lobby:
         sid= player['sid']
@@ -210,10 +240,11 @@ def start_game():
             "x": spawn_x,
             "y": spawn_y,
             "board_level": 1,
-            **_me()
+            'username': player['username'],
+            'avatar': player['avatar']
         }
-    emit('tile-init', {'tileStates': tile_states}, namespace='/game')
-    emit('players', {'players': players}, namespace='/game', broadcast=True)
+    socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
+    socketio.emit('players', {'players': players}, namespace='/game')
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
