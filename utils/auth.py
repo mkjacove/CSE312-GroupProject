@@ -27,6 +27,11 @@ def login():
             session.permanent = True
             session["username"] = user["username"]
             session["avatar"] = user.get("avatar", "user.webp")
+            session["current_tiles"] = 0
+            session["games_played"] = user.get("games_played")
+            session["average_tiles"] = user.get("average_tiles")
+            session["win_count"] = user.get("win_count")
+
             return "logged in", 200
         else:
             print("❌ Invalid login")
@@ -59,7 +64,8 @@ def register():
             return message, 400
 
         hashed_password = generate_password_hash(password)
-        users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp"})
+        users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp",
+                                     "current_tiles": 0, "games_played":0,"win_count":0, "average_tiles":0})
 
         print(f"✅ Registered user: {username}")
         current_app.logger.info(f"{username} successfully registered")
