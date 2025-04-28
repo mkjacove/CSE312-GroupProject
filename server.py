@@ -325,6 +325,7 @@ def handle_reset():
         winner = players[winner_sid]
         emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
              namespace='/game', broadcast=True)
+        emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
         reset_game()
         return
 def reset_game():

@@ -58,6 +58,10 @@ socket.on("eliminated", data => {
   alert("You've lost!");
   window.location.href = data.redirect;
 });
+socket.on("victory", data => {
+  alert("🎉 Congratulations, you won!");
+  window.location.href = data.redirect;
+});
 
 socket.on("countdown", data => {
   const cd = document.getElementById("countdown");
@@ -127,17 +131,16 @@ socket.on("players", msg => {
       targetX: d.x, targetY: d.y
     };
   }
-  // if (!gameStarted) {
-  //   gameStarted = true;
-  //   gameLoop();
-  // }
 });
 
 socket.on("game_start", () => {
   if (!gameStarted) {
-    alert("The game is starting!");
-    gameStarted = true;
-    gameLoop();
+     if (!gameStarted) {
+      const cd = document.getElementById("countdown");
+      cd.style.display = "none";
+      gameStarted = true;
+      gameLoop();
+    }
   }
 });
 
