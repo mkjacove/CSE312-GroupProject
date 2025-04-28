@@ -143,6 +143,11 @@ socket.on("game_start", () => {
     }
   }
 });
+socket.on("game_reset", () => {
+  gameStarted = false;
+  tileStates = {1:{},2:{},3:{}};
+  otherPlayers = {};
+});
 
 socket.on("chat", msg => addChatMessage(msg.text));
 

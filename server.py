@@ -330,13 +330,13 @@ def handle_reset():
         return
 def reset_game():
     global game_in_progress, lobby, players
-    game_in_progress = False  # Game is no longer in progress
-    players = {}  # Clear players data
-    lobby = []  # Clear the lobby
+    game_in_progress = False
+    players = {}
+    lobby = []
 
-    emit('chat', {'text': "The game has ended! Waiting for players to join the next round."}, namespace='/game',
-         broadcast=True)
+    socketio.emit('chat', {'text': "The game has ended! Waiting for players to join the next round."}, namespace='/game')
 
+    socketio.emit('game_reset', {}, namespace='/game')
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
@@ -348,10 +348,11 @@ def ws_disconnect():
             players.pop(sid, None)
 
         if len(players) == 1:
-            winner_sid = next(iter(players))
+            winner_sid = next(iter(players))  # Get the last player standing
             winner = players[winner_sid]
-            emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
-                 namespace='/game', broadcast=True)
+            socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+                 namespace='/game')
+            socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
             reset_game()
             return
     else:
@@ -361,7 +362,7 @@ def ws_disconnect():
                 emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
                 break
 
-    emit('players', {'players': players}, namespace='/game', broadcast=True)
+    socketio.emit('players', {'players': players}, namespace='/game')
 
 @app.before_request
 def log_request_info():
