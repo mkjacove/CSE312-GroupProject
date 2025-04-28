@@ -56,8 +56,13 @@ const socket = io('/game', { transports: ['websocket'] });
 socket.on("connect",    () => console.log("Socket connected:", socket.id));
 socket.on("disconnect", () => console.log("Socket disconnected"));
 socket.on("eliminated", data => {
-  alert("You've lost!");
-  window.location.href = data.redirect;
+  const message = data.message || "You've lost!";
+  document.getElementById("winner-message").textContent = message;
+  document.getElementById("winner-modal").classList.remove("hidden");
+
+  document.getElementById("winner-ok").onclick = () => {
+    window.location.href = data.redirect;
+  };
 });
 
 // ─── INITIAL TILES ──────────────────────────────────────────────────────────

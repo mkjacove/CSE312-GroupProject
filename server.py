@@ -199,16 +199,43 @@ alive_update_loop()  # Start looping when server boots
 def reset_game():
     global tile_states, tile_timestamps, players, player_start_times
 
+    # Find the player with the highest alive_seconds
+    winner_sid = None
+    winner_username = None
+    max_seconds = -1
+
+    for sid, p in players.items():
+        seconds = p.get("alive_seconds", 0)
+        if seconds > max_seconds:
+            max_seconds = seconds
+            winner_sid = sid
+            winner_username = p.get("username", "Unknown")
+
+    # Build the winner messages
+    if winner_username:
+        win_message_for_others = f"{winner_username} survived the longest with {max_seconds} seconds!"
+        win_message_for_winner = f"You won the game! You survived for {max_seconds} seconds!"
+    else:
+        win_message_for_others = "Game reset! No winner this round."
+        win_message_for_winner = "Game reset! No winner this round."
+
+    # Reset all tiles
     tile_states = {1: {}, 2: {}, 3: {}}
     tile_timestamps = {1: {}, 2: {}, 3: {}}
 
+    # Kick all players, customized message for winner
     for sid in list(players.keys()):
-        socketio.emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
+        message = win_message_for_winner if sid == winner_sid else win_message_for_others
+        socketio.emit('eliminated', {
+            'redirect': '/',
+            'message': message
+        }, namespace='/game', to=sid)
 
+    # Clear player data
     players.clear()
     player_start_times.clear()
 
-    print("[Server] Board reset and all players kicked.")
+    print(f"[Server] Board reset. {win_message_for_others}")
 
 def game_reset_loop():
     global time_until_reset
