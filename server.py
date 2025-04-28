@@ -295,7 +295,7 @@ def handle_tile(data):
     if not player:
         return
 
-    board = player.get('board_level', 1)
+    board = data['board']
     key = data['key']
     now = datetime.now()
 
@@ -339,7 +339,7 @@ def handle_reset():
         players[sid]['y'] = spawn_y
 
         # tell client maybe (optional: pop-up "Level 2!")
-        emit('chat', {'text': f"{player['username']} advanced to Board {current_board+1}!"}, namespace='/game', broadcast=True)
+        emit('chat', {'text': f"{player['username']} fell to Board {current_board+1}!"}, namespace='/game', broadcast=True)
 
     else:
         # eliminate player
