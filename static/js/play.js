@@ -96,7 +96,10 @@ socket.on("tile-update", msg => {
     activeRedTiles[board].delete(key);
   } else {
     tileStates[board][key] = state;
-    if (state === 1) activeRedTiles[board].add(key);
+    if (state === 1) {
+      activeRedTiles[board].add(key);
+      // The tile was NOT red yet (white tile)
+      socket.emit("stepped-on-white", { key, board: b })}
     else activeRedTiles[board].delete(key);
   }
 });

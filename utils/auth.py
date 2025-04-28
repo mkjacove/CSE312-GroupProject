@@ -30,7 +30,7 @@ def login():
             session["current_tiles"] = 0
             session["games_played"] = user.get("games_played")
             session["average_tiles"] = user.get("average_tiles")
-            session["win_count"] = user.get("win_count")
+            session["games_won"] = user.get("games_won")
 
             return "logged in", 200
         else:
@@ -65,7 +65,7 @@ def register():
 
         hashed_password = generate_password_hash(password)
         users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp",
-                                     "current_tiles": 0, "games_played":0,"win_count":0, "average_tiles":0})
+                                     "current_tiles": 0, "games_played":0,"games_won":0, "average_tiles":0})
 
         print(f"✅ Registered user: {username}")
         current_app.logger.info(f"{username} successfully registered")

@@ -124,12 +124,37 @@ def play():
 @app.route("/api/users/@me")
 def get_current_user():
     if "username" in session and users_collection.find_one({"username": session["username"]}):
+        user = users_collection.find_one({"username": session["username"]})
         return jsonify({
             "id": True,
             "username": session["username"],
-            "avatar": session.get("avatar", "user.webp")
+            "avatar": user.get("avatar", "user.webp"),
+            "current_tiles": user.get("current_tiles"),
+            "games_played": user.get("games_played"),
+            "games_won": user.get("games_won"),
+            "average_tiles": user.get("average_tiles")
+
         })
     return jsonify({"id": None})
+
+@app.route("/api/users")
+def get_all_users():
+    users = []
+    for user in users_collection.find({}):
+        users.append({"username": user.get("username")})
+    return jsonify(users)
+
+@app.route("/api/users/<username>/stats")
+def get_user_stats(username):
+    user = users_collection.find_one({"username": username})
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+    stats = {
+        "games_played": user.get("games_played", 0),
+        "games_won": user.get("games_won", 0),
+        "average_tiles": user.get("average_tiles", 0),
+    }
+    return jsonify(stats)
 
 # ---------- WebSocket setup for /game namespace ----------
 
@@ -159,6 +184,20 @@ tile_timestamps = {
 players         = {}  # sid → { x, y, username, board_level, avatar }
 player_start_times = {}  # sid -> datetime
 top_survivors = []       # final top survivors after elimination
+
+@socketio.on('stepped-on-white', namespace='/game')
+def stepped_on_white(data):
+    print(data)
+    x = session.get('current_tiles', 0) + 1
+    session['current_tiles'] = x
+    session.modified = True
+    print(session)
+    users_collection.update_one(
+        {"username": session["username"]},
+        {"$set": {"current_tiles": x}})
+    return
+
+
 
 def update_alive_times():
     now = datetime.now()
@@ -212,6 +251,12 @@ def reset_game():
     if winner_username:
         win_message_for_others = f"{winner_username} survived the longest with {max_seconds} seconds!"
         win_message_for_winner = f"You won the game! You survived for {max_seconds} seconds!"
+        #update db and session
+        previous_wins = users_collection.find_one({"username": winner_username}).get("games_won")
+        users_collection.update_one({"username": winner_username},{"$set": {"games_won": previous_wins+1}})
+        if session["username"]==winner_username:
+            session["games_won"] = previous_wins+1
+            session.modified = True
     else:
         win_message_for_others = "Game reset! No winner this round."
         win_message_for_winner = "Game reset! No winner this round."
@@ -275,6 +320,12 @@ def ws_connect():
     }
     emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     emit('players', {'players': players}, namespace='/game', broadcast=True)
+
+    user = users_collection.find_one({"username": session["username"]})
+    previous_games_played = user.get("games_played")
+    users_collection.update_one({"username": session["username"]}, {"$set": {"games_played": previous_games_played+1}})
+    session["games_played"] = previous_games_played+1
+    session.modified = True
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
@@ -345,6 +396,7 @@ def handle_reset():
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
 
+
         # notify *only* the eliminated player to redirect
         emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
 
@@ -367,6 +419,16 @@ def ws_disconnect():
         top_survivors[:] = top_survivors[:10]
     players.pop(sid, None)
     emit('players', {'players': players}, namespace='/game', broadcast=True)
+
+    user = users_collection.find_one({"username": session["username"]})
+    previous_games_played = user.get("games_played")-1
+    previous_average_tiles = user.get("average_tiles")
+    total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles")
+    new_average = total_tiles/user.get("games_played")
+    users_collection.update_one({"username": session["username"]},
+                                {"$set": {"average_tiles": new_average}})
+    session["average_tiles"] = new_average
+    session.modified = True
 
 @app.before_request
 def log_request_info():
