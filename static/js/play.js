@@ -39,6 +39,14 @@ let gameStarted = false;
 const avatarCache    = {};
 const activeRedTiles = {1: new Set(), 2: new Set(), 3: new Set()};
 
+// Sprinting logic variables (already declared somewhere above)
+let maxStamina = 150;
+let stamina = maxStamina;
+let sprinting = false;
+let sprintSpeed = 6;
+let staminaDrainRate = 1;
+let staminaRegenRate = 0.25;
+
 // --- input handling
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup",   e => keys[e.key] = false);
@@ -155,26 +163,62 @@ socket.on("time-until-reset", data => {
 let lastEmit = 0;
 function update() {
   let dx = 0, dy = 0;
-  if (keys.ArrowUp    || keys.w) dy -= playerSpeed;
-  if (keys.ArrowDown  || keys.s) dy += playerSpeed;
-  if (keys.ArrowLeft  || keys.a) dx -= playerSpeed;
-  if (keys.ArrowRight || keys.d) dx += playerSpeed;
 
-  playerX = Math.max(0, Math.min(playerX + dx, gridWidth));
-  playerY = Math.max(0, Math.min(playerY + dy, gridHeight));
+  // Always fresh movement input every frame
+  if (keys.ArrowUp    || keys.w) dy -= 1;
+  if (keys.ArrowDown  || keys.s) dy += 1;
+  if (keys.ArrowLeft  || keys.a) dx -= 1;
+  if (keys.ArrowRight || keys.d) dx += 1;
 
+  const holdingShift = keys.Shift || keys.ShiftLeft || keys.ShiftRight;
+  const moving = dx !== 0 || dy !== 0;
+
+  // Handle sprinting purely on movement + shift
+  if (moving && holdingShift && stamina > 0) {
+    sprinting = true;
+    stamina -= staminaDrainRate;
+    if (stamina < 0) stamina = 0;
+  } else {
+    sprinting = false;
+    if (!holdingShift) {
+      stamina += staminaRegenRate;
+      if (stamina > maxStamina) stamina = maxStamina;
+    }
+  }
+
+  const currentSpeed = sprinting ? sprintSpeed : playerSpeed;
+
+  if (moving) {
+    // Normalize diagonal movement
+    if (dx !== 0 && dy !== 0) {
+      const factor = Math.sqrt(0.5);
+      dx *= factor;
+      dy *= factor;
+    }
+
+    // Move player based on current dx, dy, and speed
+    playerX += dx * currentSpeed;
+    playerY += dy * currentSpeed;
+
+    // Clamp player inside the map
+    playerX = Math.max(0, Math.min(playerX, gridWidth  - tileSize));
+    playerY = Math.max(0, Math.min(playerY, gridHeight - tileSize));
+  }
+
+  // Update camera
   cameraX = Math.max(0, Math.min(playerX + tileSize/2 - canvas.width/2,
-                                  gridWidth  - canvas.width));
+                                 gridWidth  - canvas.width));
   cameraY = Math.max(0, Math.min(playerY + tileSize/2 - canvas.height/2,
-                                  gridHeight - canvas.height));
+                                 gridHeight - canvas.height));
 
+  // Emit movement update periodically
   const now = Date.now();
   if (now - lastEmit > 100) {
     socket.emit("move", { x: playerX, y: playerY });
     lastEmit = now;
   }
 
-  // smooth other players
+  // Smooth other players
   for (const id in otherPlayers) {
     const p = otherPlayers[id], s = 0.1;
     p.x += (p.targetX - p.x) * s;
@@ -243,6 +287,7 @@ function draw() {
   miniCtx.beginPath();
   miniCtx.arc(dotX, dotY, 5, 0, 2*Math.PI);
   miniCtx.fill();
+  drawStaminaBar(ctx);
 }
 
 function drawPlayer(x, y, username, img) {
@@ -279,6 +324,31 @@ function addChatMessage(msg) {
   d.textContent = msg;
   chatLog.appendChild(d);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function drawStaminaBar(ctx) {
+  const barWidth = 200;
+  const barHeight = 20;
+  const padding = 20;
+
+  const staminaRatio = stamina / maxStamina;
+
+  // Position at bottom-right corner
+  const x = canvas.width - barWidth - padding;
+  const y = canvas.height - barHeight - padding;
+
+  // Background (gray)
+  ctx.fillStyle = "#555";
+  ctx.fillRect(x, y, barWidth, barHeight);
+
+  // Stamina bar (green or red)
+  ctx.fillStyle = staminaRatio > 0.3 ? "#00FF00" : "#FF0000";
+  ctx.fillRect(x, y, barWidth * staminaRatio, barHeight);
+
+  // Border
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, barWidth, barHeight);
 }
 
 // ─── PAINT CURRENT CELL ────────────────────────────────────────────────────

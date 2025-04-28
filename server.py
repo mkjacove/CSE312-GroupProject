@@ -59,7 +59,7 @@ def home():
 
 @app.route("/change-avatar", methods=["GET", "POST"])
 def avatar():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
 
     if request.method == "POST":
@@ -104,19 +104,16 @@ def stats():
 
 @app.route("/achievements")
 def achievements():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
 
-@app.route("/direct-messaging")
-def messaging():
-    if "username" not in session:
-        return redirect(url_for("home", error="not_signed_in"))
-    return render_template("direct-messaging.html")
-
 @app.route("/play")
 def play():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
+        #                        ^ Can be useful to comment this out when testing the ^
+        #                        ^ game, you can play with the session cookie from an ^
+        #                        ^ old docker container to avoid account creation.    ^
         return redirect(url_for("home", error="not_signed_in"))
     return render_template(
         "play.html",
