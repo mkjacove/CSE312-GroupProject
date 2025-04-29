@@ -171,10 +171,10 @@ function update() {
   let dx = 0, dy = 0;
 
   // Always fresh movement input every frame
-  if (keys.ArrowUp    || keys.w) dy -= 1;
-  if (keys.ArrowDown  || keys.s) dy += 1;
-  if (keys.ArrowLeft  || keys.a) dx -= 1;
-  if (keys.ArrowRight || keys.d) dx += 1;
+  if (keys.ArrowUp    /*|| keys.w*/) dy -= 1;
+  if (keys.ArrowDown  /*|| keys.s*/) dy += 1;
+  if (keys.ArrowLeft  /*|| keys.a*/) dx -= 1;
+  if (keys.ArrowRight /*|| keys.d*/) dx += 1;
 
   const holdingShift = keys.Shift || keys.ShiftLeft || keys.ShiftRight;
   const moving = dx !== 0 || dy !== 0;

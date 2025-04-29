@@ -18,6 +18,7 @@ def is_valid_password(password):
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
         user = users_collection.find_one({"username": username})
@@ -44,6 +45,7 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
 
