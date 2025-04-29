@@ -61,7 +61,6 @@ def home():
 def avatar():
     if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
-
     if request.method == "POST":
         file = request.files.get("avatar")
         if not file or file.filename == "":
@@ -91,7 +90,7 @@ def avatar():
 
         return redirect(url_for("avatar"))
 
-    return render_template("change-avatar.html")
+    return render_template("change-avatar.html", username=session["username"], avatar_url=session["avatar"])
 
 
 @app.route("/leaderboard")
@@ -111,9 +110,6 @@ def achievements():
 @app.route("/play")
 def play():
     if "username" not in session or not users_collection.find_one({"username": session["username"]}):
-        #                        ^ Can be useful to comment this out when testing the ^
-        #                        ^ game, you can play with the session cookie from an ^
-        #                        ^ old docker container to avoid account creation.    ^
         return redirect(url_for("home", error="not_signed_in"))
     return render_template(
         "play.html",
