@@ -160,6 +160,7 @@ socket.on("game_start", () => {
       cd.style.display = "none";
       gameStarted = true;
       gameLoop();
+
     }
   }
 });
@@ -167,6 +168,8 @@ socket.on("game_reset", () => {
   gameStarted = false;
   tileStates = {1:{},2:{},3:{}};
   otherPlayers = {};
+
+  socket.emit("rejoin");
 });
 
 socket.on("chat", msg => addChatMessage(msg.text));
@@ -429,13 +432,13 @@ setInterval(() => {
   }
 }, 1000);
 
-function updateSurvivalTimerUI() {
-  const el = document.getElementById("timer-seconds");
-  if (el) {
-    el.textContent = myAliveSeconds;
-  }
-  requestAnimationFrame(updateSurvivalTimerUI);
-}
+// function updateSurvivalTimerUI() {
+//   const el = document.getElementById("timer-seconds");
+//   if (el) {
+//     el.textContent = myAliveSeconds;
+//   }
+//   requestAnimationFrame(updateSurvivalTimerUI);
+// }
 
 function gameLoop() {
   update();

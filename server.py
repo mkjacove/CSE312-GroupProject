@@ -293,6 +293,42 @@ def start_game():
     session["games_played"] = previous_games_played+1
     session.modified = True
 
+@socketio.on('rejoin', namespace='/game')
+def handle_rejoin():
+    global game_in_progress, lobby
+
+    # If a game is in progress, refuse
+    if game_in_progress:
+        emit('chat',
+             {'text': "The game is already in progress. Please wait for the next round."},
+             namespace='/game',
+             to=request.sid)
+        return
+
+    sid = request.sid
+
+    # Don't double-add
+    if any(p['sid'] == sid for p in lobby):
+        return
+
+    # Rebuild their player object from session
+    player = {
+        'sid':      sid,
+        'username': session.get('username'),
+        'avatar':   session.get('avatar', 'user.webp')
+    }
+    lobby.append(player)
+
+    # Announce them joining
+    emit('chat',
+         {'text': f"{player['username']} has joined the lobby!"},
+         namespace='/game',
+         broadcast=True)
+
+    # If they've just pushed you over the player count, start a new countdown
+    if len(lobby) >= MIN_PLAYERS:
+        schedule_countdown()
+
 @socketio.on('move', namespace='/game')
 def handle_move(data):
     global players
@@ -381,7 +417,8 @@ def handle_reset():
         winner = players[winner_sid]
         socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                       namespace='/game')
-        socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
+        for player in lobby:
+            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
         reset_game()
         return
 
@@ -411,7 +448,7 @@ def reset_game():
     socketio.emit('game_reset', {}, namespace='/game')
 
 @socketio.on('disconnect', namespace='/game')
-def ws_disconnect():
+def ws_disconnect(sid, *args):
     global game_in_progress, players
     sid = request.sid
 
@@ -424,7 +461,8 @@ def ws_disconnect():
             winner = players[winner_sid]
             socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                           namespace='/game')
-            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
+            for player in lobby:
+                socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
             reset_game()
             return
     else:
@@ -438,10 +476,11 @@ def ws_disconnect():
     socketio.emit('players', {'players': players}, namespace='/game')
     
     user = users_collection.find_one({"username": session["username"]})
-    previous_games_played = user.get("games_played")-1
-    previous_average_tiles = user.get("average_tiles")
-    total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles")
-    new_average = total_tiles/user.get("games_played")
+    games_played = user.get("games_played", 0)
+    previous_games_played = games_played - 1
+    previous_average_tiles = user.get("average_tiles", 0)
+    total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles", 0)
+    new_average = total_tiles/user.get("games_played", 1)
     users_collection.update_one({"username": session["username"]},
                                 {"$set": {"average_tiles": new_average}})
     session["average_tiles"] = new_average
