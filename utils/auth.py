@@ -18,6 +18,7 @@ def is_valid_password(password):
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
         user = users_collection.find_one({"username": username})
@@ -27,6 +28,11 @@ def login():
             session.permanent = True
             session["username"] = user["username"]
             session["avatar"] = user.get("avatar", "user.webp")
+            session["current_tiles"] = 0
+            session["games_played"] = user.get("games_played")
+            session["average_tiles"] = user.get("average_tiles")
+            session["games_won"] = user.get("games_won")
+
             return "logged in", 200
         else:
             print("❌ Invalid login")
@@ -39,6 +45,7 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
 
@@ -59,7 +66,8 @@ def register():
             return message, 400
 
         hashed_password = generate_password_hash(password)
-        users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp"})
+        users_collection.insert_one({"username": username, "password": hashed_password, "avatar": "user.webp",
+                                     "current_tiles": 0, "games_played":0,"games_won":0, "average_tiles":0})
 
         print(f"✅ Registered user: {username}")
         current_app.logger.info(f"{username} successfully registered")

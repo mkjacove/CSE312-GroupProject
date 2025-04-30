@@ -20,6 +20,8 @@ rm -f ~error.log
 rm -f ~complete.log
 rm -f ~complete.log
 
+rm -f *.log
+
 touch /var/www/logs/~log.log /var/www/logs/~error.log /var/www/logs/~complete.log
 chmod 666 /var/www/logs/~log.log
 chmod 666 /var/www/logs/~error.log

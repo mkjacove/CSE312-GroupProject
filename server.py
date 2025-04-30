@@ -13,6 +13,7 @@ import random
 import logging
 import traceback
 import re
+
 from threading import Event
 
 COUNTDOWN_START = 10
@@ -63,9 +64,8 @@ def home():
 
 @app.route("/change-avatar", methods=["GET", "POST"])
 def avatar():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
-
     if request.method == "POST":
         file = request.files.get("avatar")
         if not file or file.filename == "":
@@ -95,7 +95,7 @@ def avatar():
 
         return redirect(url_for("avatar"))
 
-    return render_template("change-avatar.html")
+    return render_template("change-avatar.html", username=session["username"], avatar_url=session["avatar"])
 
 
 @app.route("/leaderboard")
@@ -108,13 +108,13 @@ def stats():
 
 @app.route("/achievements")
 def achievements():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
 
 @app.route("/play")
 def play():
-    if "username" not in session:
+    if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
     return render_template(
         "play.html",
@@ -125,12 +125,37 @@ def play():
 @app.route("/api/users/@me")
 def get_current_user():
     if "username" in session and users_collection.find_one({"username": session["username"]}):
+        user = users_collection.find_one({"username": session["username"]})
         return jsonify({
             "id": True,
             "username": session["username"],
-            "avatar": session.get("avatar", "user.webp")
+            "avatar": user.get("avatar", "user.webp"),
+            "current_tiles": user.get("current_tiles"),
+            "games_played": user.get("games_played"),
+            "games_won": user.get("games_won"),
+            "average_tiles": user.get("average_tiles")
+
         })
     return jsonify({"id": None})
+
+@app.route("/api/users")
+def get_all_users():
+    users = []
+    for user in users_collection.find({}):
+        users.append({"username": user.get("username")})
+    return jsonify(users)
+
+@app.route("/api/users/<username>/stats")
+def get_user_stats(username):
+    user = users_collection.find_one({"username": username})
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+    stats = {
+        "games_played": user.get("games_played", 0),
+        "games_won": user.get("games_won", 0),
+        "average_tiles": user.get("average_tiles", 0),
+    }
+    return jsonify(stats)
 
 # ---------- WebSocket setup for /game namespace ----------
 
@@ -158,6 +183,19 @@ tile_timestamps = {
     3: {}
 }
 players = {}  # sid → { x, y, username, board_level, avatar }
+
+@socketio.on('stepped-on-white', namespace='/game')
+def stepped_on_white(data):
+    print(data)
+    x = session.get('current_tiles', 0) + 1
+    session['current_tiles'] = x
+    session.modified = True
+    print(session)
+    users_collection.update_one(
+        {"username": session["username"]},
+        {"$set": {"current_tiles": x}})
+    return
+
 
 def _me():
     return {
@@ -246,19 +284,14 @@ def start_game():
             'avatar': player['avatar']
         }
 
-
-    # filtered = {}
-    # currentUsernames = {}
-    # for sid in players.keys():
-    #     user = players[sid]["username"]
-    #     currentUsernames[user] = sid
-    #
-    # for i in currentUsernames.values():
-    #     filtered[i] = players[i]
-    # players = filtered
-
     socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
+
+    user = users_collection.find_one({"username": session["username"]})
+    previous_games_played = user.get("games_played")
+    users_collection.update_one({"username": session["username"]}, {"$set": {"games_played": previous_games_played+1}})
+    session["games_played"] = previous_games_played+1
+    session.modified = True
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
@@ -337,8 +370,6 @@ def handle_reset():
         if sid in players:
             del players[sid]
             print(f"[handle_reset]   → deleted sid, players_after={players}")
-        else:
-            print(f"[handle_reset]   → sid not found in players! (maybe already removed)")
 
         # notify *only* the eliminated player to redirect
         emit('eliminated',  namespace='/game', to=sid)
@@ -405,6 +436,16 @@ def ws_disconnect():
                     break
 
     socketio.emit('players', {'players': players}, namespace='/game')
+    
+    user = users_collection.find_one({"username": session["username"]})
+    previous_games_played = user.get("games_played")-1
+    previous_average_tiles = user.get("average_tiles")
+    total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles")
+    new_average = total_tiles/user.get("games_played")
+    users_collection.update_one({"username": session["username"]},
+                                {"$set": {"average_tiles": new_average}})
+    session["average_tiles"] = new_average
+    session.modified = True
 
 @app.before_request
 def log_request_info():

@@ -76,6 +76,18 @@
 
   <body>
     <div id="canvas-container">
+      <div id="my-timer" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded z-30 text-center">
+        <span class="font-bold text-lg">Survival Time:</span>
+        <span id="timer-seconds">0</span> seconds
+      </div>
+      <div id="reset-timer" class="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded z-30 text-center">
+      <span class="font-bold text-lg">Server Reset In:</span>
+      <span id="reset-seconds">300</span> seconds
+    </div>
+      <div id="leaderboard" class="absolute top-24 right-10 bg-black bg-opacity-50 p-4 rounded z-20">
+        <h2 class="text-xl font-bold mb-2">Top Survivors</h2>
+        <ul id="leaderboard-list" class="text-sm"></ul>
+      </div>
       <button id="fullscreen-btn">Fullscreen</button>
       <!-- countdown overlay -->
       <div
@@ -95,6 +107,15 @@
       <canvas id="miniMapCanvas" width="200" height="200"></canvas>
       <canvas id="gameCanvas"></canvas>
       <div id="chat-log"></div>
+    </div>
+
+    <div id="winner-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div class="bg-white text-black p-6 rounded shadow-lg text-center">
+        <h2 id="winner-message" class="text-xl font-bold mb-4"></h2>
+        <button id="winner-ok" disabled class="bg-gray-400 text-white font-bold py-2 px-4 rounded cursor-not-allowed">
+          Redirecting...
+        </button>
+      </div>
     </div>
 
     <!-- lucide icons -->
