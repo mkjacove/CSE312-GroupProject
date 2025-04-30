@@ -36,6 +36,8 @@ let tileStates = {1:{},2:{},3:{}};
 let otherPlayers = {};
 let playerBoardLevel = 1;
 let gameStarted = false;
+let isEliminated = false;
+let winnerName = '';
 const avatarCache    = {};
 const activeRedTiles = {1: new Set(), 2: new Set(), 3: new Set()};
 
@@ -63,17 +65,27 @@ const socket = io('/game', { transports: ['websocket'] });
 
 socket.on("connect",    () => console.log("Socket connected:", socket.id));
 socket.on("disconnect", () => console.log("Socket disconnected"));
-socket.on("eliminated", data => {
-  const message = data.message || "You've lost!";
+socket.on("eliminated", () => {
+  isEliminated = true;
+});
+socket.on("victory", data => {
+  winnerName = data.username;
+  if (isEliminated) {
+      alert(`🎉 ${winnerName} won the game!`);
+  } else {
+    alert("🎉 Congratulations, you won!");
+  }
+  window.location.href = '/';
+});
 
-  // Set the winner message
-  document.getElementById("winner-message").textContent = message;
-  document.getElementById("winner-modal").classList.remove("hidden");
-
-  // Automatically redirect after 2 seconds
-  setTimeout(() => {
-    window.location.href = data.redirect;
-  }, 2000);
+socket.on("countdown", data => {
+  const cd = document.getElementById("countdown");
+  if (data.time > 0) {
+    cd.textContent = `Game starts in ${data.time}s…`;
+    cd.style.display = "block";
+  } else {
+    cd.style.display = "none";
+  }
 });
 
 // ─── INITIAL TILES ──────────────────────────────────────────────────────────
@@ -139,11 +151,22 @@ socket.on("players", msg => {
       targetX: d.x, targetY: d.y
     };
   }
+});
+
+socket.on("game_start", () => {
   if (!gameStarted) {
-    gameStarted = true;
-    gameLoop();
-    updateSurvivalTimerUI();
+     if (!gameStarted) {
+      const cd = document.getElementById("countdown");
+      cd.style.display = "none";
+      gameStarted = true;
+      gameLoop();
+    }
   }
+});
+socket.on("game_reset", () => {
+  gameStarted = false;
+  tileStates = {1:{},2:{},3:{}};
+  otherPlayers = {};
 });
 
 socket.on("chat", msg => addChatMessage(msg.text));
@@ -168,6 +191,7 @@ socket.on("time-until-reset", data => {
 // ─── MOVE + EMIT ──────────────────────────────────────────────────────────
 let lastEmit = 0;
 function update() {
+  if (isEliminated) return;
   let dx = 0, dy = 0;
 
   // Always fresh movement input every frame
@@ -235,6 +259,27 @@ function update() {
 // ─── DRAW LOOP ─────────────────────────────────────────────────────────────
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+   if (isEliminated) {
+    // Show elimination message
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#FF0000";
+    ctx.font = "bold 48px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("ELIMINATED", canvas.width/2, canvas.height/2 - 30);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "24px Arial";
+    ctx.fillText("STAY TO SEE WHO WINS", canvas.width/2, canvas.height/2 + 30);
+
+    if (winnerName) {
+      ctx.fillStyle = "#FFFF00";
+      ctx.font = "36px Arial";
+      ctx.fillText(`${winnerName} WON!`, canvas.width/2, canvas.height/2 + 100);
+    }
+    return;
+  }
   ctx.save();
     ctx.translate(-cameraX, -cameraY);
 
@@ -265,9 +310,9 @@ function draw() {
     drawPlayer(playerX, playerY, window.PLAYER_USERNAME, avatarImg);
     for (const id in otherPlayers) {
       const p = otherPlayers[id];
-      if(p.board_level === playerBoardLevel)
-       {
-       drawPlayer(p.x, p.y, p.username, p.avatarImg);
+
+      if(p.board_level === playerBoardLevel && !p.eliminated) {
+        drawPlayer(p.x, p.y, p.username, p.avatarImg);
        }
     }
   ctx.restore();
@@ -397,4 +442,3 @@ function gameLoop() {
   draw();
   requestAnimationFrame(gameLoop);
 }
-

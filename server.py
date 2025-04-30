@@ -13,7 +13,11 @@ import random
 import logging
 import traceback
 import re
-from threading import Timer
+
+from threading import Event
+
+COUNTDOWN_START = 10
+countdown_abort_event: Event | None = None
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
@@ -45,8 +49,9 @@ complete_logger.setLevel(logging.INFO)
 from utils.auth import auth_bp
 app.register_blueprint(auth_bp)
 
-reset_interval_seconds = 300  # 5 minutes
-time_until_reset = reset_interval_seconds
+lobby = []
+game_in_progress = False
+MIN_PLAYERS = 2  # Minimum number of players to start the game
 
 # Serve images
 @app.route("/images/<filename>")
@@ -177,9 +182,7 @@ tile_timestamps = {
     2: {},
     3: {}
 }
-players         = {}  # sid → { x, y, username, board_level, avatar }
-player_start_times = {}  # sid -> datetime
-top_survivors = []       # final top survivors after elimination
+players = {}  # sid → { x, y, username, board_level, avatar }
 
 @socketio.on('stepped-on-white', namespace='/game')
 def stepped_on_white(data):
@@ -193,95 +196,6 @@ def stepped_on_white(data):
         {"$set": {"current_tiles": x}})
     return
 
-
-
-def update_alive_times():
-    now = datetime.now()
-    live_top_survivors = []
-    for sid, start_time in player_start_times.items():
-        if sid in players:
-            alive_seconds = int((now - start_time).total_seconds())
-            players[sid]["alive_seconds"] = alive_seconds
-            live_top_survivors.append({
-                "username": players[sid]["username"],
-                "seconds": alive_seconds
-            })
-
-    live_top_survivors.sort(key=lambda x: -x["seconds"])
-    live_top_survivors = live_top_survivors[:10]
-
-    socketio.emit('top-players', live_top_survivors, namespace='/game')
-
-def alive_update_loop():
-    global time_until_reset
-    update_alive_times()
-
-    # Countdown
-    time_until_reset -= 1
-    if time_until_reset < 0:
-        time_until_reset = reset_interval_seconds  # Reset timer after game reset
-
-    # Send time left to all clients
-    socketio.emit('time-until-reset', {'seconds': time_until_reset}, namespace='/game')
-
-    Timer(1.0, alive_update_loop).start()
-
-alive_update_loop()  # Start looping when server boots
-
-def reset_game():
-    global tile_states, tile_timestamps, players, player_start_times
-
-    # Find the player with the highest alive_seconds
-    winner_sid = None
-    winner_username = None
-    max_seconds = -1
-
-    for sid, p in players.items():
-        seconds = p.get("alive_seconds", 0)
-        if seconds > max_seconds:
-            max_seconds = seconds
-            winner_sid = sid
-            winner_username = p.get("username", "Unknown")
-
-    # Build the winner messages
-    if winner_username:
-        win_message_for_others = f"{winner_username} survived the longest with {max_seconds} seconds!"
-        win_message_for_winner = f"You won the game! You survived for {max_seconds} seconds!"
-        #update db and session
-        previous_wins = users_collection.find_one({"username": winner_username}).get("games_won")
-        users_collection.update_one({"username": winner_username},{"$set": {"games_won": previous_wins+1}})
-        if session["username"]==winner_username:
-            session["games_won"] = previous_wins+1
-            session.modified = True
-    else:
-        win_message_for_others = "Game reset! No winner this round."
-        win_message_for_winner = "Game reset! No winner this round."
-
-    # Reset all tiles
-    tile_states = {1: {}, 2: {}, 3: {}}
-    tile_timestamps = {1: {}, 2: {}, 3: {}}
-
-    # Kick all players, customized message for winner
-    for sid in list(players.keys()):
-        message = win_message_for_winner if sid == winner_sid else win_message_for_others
-        socketio.emit('eliminated', {
-            'redirect': '/',
-            'message': message
-        }, namespace='/game', to=sid)
-
-    # Clear player data
-    players.clear()
-    player_start_times.clear()
-
-    print(f"[Server] Board reset. {win_message_for_others}")
-
-def game_reset_loop():
-    global time_until_reset
-    reset_game()
-    time_until_reset = reset_interval_seconds  # Reset the timer
-    Timer(reset_interval_seconds, game_reset_loop).start()
-
-game_reset_loop()  # Start the loop at server startup
 
 def _me():
     return {
@@ -304,18 +218,74 @@ def find_random_white_tile(board_level):
 
 @socketio.on('connect', namespace='/game')
 def ws_connect():
+    global game_in_progress
+
+    if game_in_progress:
+        emit('chat', {'text': "The game is already in progress. Please wait for the next round."}, namespace='/game')
+        return
+
     sid = request.sid
 
-    player_start_times[sid] = datetime.now()
-    spawn_x, spawn_y = find_random_white_tile(1)
-    players[sid] = {
-        "x": spawn_x,
-        "y": spawn_y,
-        "board_level": 1,
-        **_me()
-    }
-    emit('tile-init', {'tileStates': tile_states}, namespace='/game')
-    emit('players', {'players': players}, namespace='/game', broadcast=True)
+    player = {'sid': sid, 'username': session["username"],  'avatar': session.get("avatar", "user.webp")}
+    lobby.append(player)
+
+    emit('chat', {'text': f"{player['username']} has joined the lobby!"}, namespace='/game', broadcast=True)
+    # Check if the game can start (at least MIN_PLAYERS)
+    if len(lobby) >= MIN_PLAYERS:
+        schedule_countdown()
+
+def schedule_countdown():
+    """Abort any running countdown, then start a fresh 10s countdown."""
+    global countdown_abort_event
+
+    # abort previous countdown if running
+    if countdown_abort_event:
+        countdown_abort_event.set()
+
+    # new abort-event for this countdown
+    countdown_abort_event = Event()
+    # fire off the background task
+    socketio.start_background_task(_countdown_worker, countdown_abort_event)
+
+def _countdown_worker(abort_event: Event):
+    """Emit 'countdown' every second, then call start_game() at 0."""
+    remaining = COUNTDOWN_START
+    while remaining > 0:
+        socketio.emit('countdown', {'time': remaining}, namespace='/game')
+        socketio.sleep(1)
+        if abort_event.is_set():
+            return
+        remaining -= 1
+
+    # final 0 and start
+    socketio.emit('countdown', {'time': 0}, namespace='/game')
+    start_game()
+
+def start_game():
+    global game_in_progress, players
+
+    players.clear()
+
+    if len(lobby) < MIN_PLAYERS:
+        return
+
+    game_in_progress = True
+    socketio.emit('chat', {'text': "The game is starting!"}, namespace='/game')
+    socketio.emit('game_start', {}, namespace='/game')
+
+    for player in lobby:
+        sid= player['sid']
+        spawn_x, spawn_y = find_random_white_tile(1)
+        players[sid] = {
+            "x": spawn_x,
+            "y": spawn_y,
+            "board_level": 1,
+            'username': player['username'],
+            'avatar': player['avatar']
+        }
+
+    socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
+    socketio.emit('players', {'players': players}, namespace='/game')
 
     user = users_collection.find_one({"username": session["username"]})
     previous_games_played = user.get("games_played")
@@ -325,9 +295,11 @@ def ws_connect():
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
+    global players
+
     sid = request.sid
     if sid not in players:
-        players[sid] = {'x': 0, 'y': 0, **_me()}
+        return
     players[sid].update({
         'x': data['x'],
         'y': data['y'],
@@ -370,6 +342,8 @@ def handle_tile(data):
 
 @socketio.on('reset', namespace='/game')
 def handle_reset():
+    global players
+
     sid = request.sid
     player = players.get(sid)
     if not player:
@@ -392,30 +366,77 @@ def handle_reset():
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
 
+        print("before delete players: ", players)
+        if sid in players:
+            del players[sid]
+            print(f"[handle_reset]   → deleted sid, players_after={players}")
 
         # notify *only* the eliminated player to redirect
-        emit('eliminated', {'redirect': '/'}, namespace='/game', to=sid)
+        emit('eliminated',  namespace='/game', to=sid)
 
-        players.pop(sid, None)
         emit('players', {'players': players}, namespace='/game', broadcast=True)
 
+    if len(players) == 1:
+        winner_sid = next(iter(players))  # Get the last player standing
+        winner = players[winner_sid]
+        socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+                      namespace='/game')
+        socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
+        reset_game()
+        return
+
+def reset_game():
+    global game_in_progress, lobby, players
+
+    global tile_states, tile_timestamps, countdown_abort_event
+
+     # 1) Flip the flag so new connects queue into the lobby
+    game_in_progress = False
+
+     # 2) Clear out all player lists
+    lobby.clear()
+    players.clear()
+
+      # 3) Reset every board’s tiles & timers
+    for b in (1, 2, 3):
+        tile_states[b].clear()
+        tile_timestamps[b].clear()
+
+    # 4) Forget any countdown in flight
+    countdown_abort_event = None
+
+      # 5) Announce end-of-game and send clients back to lobby view
+    socketio.emit('chat', {'text': "🏁 The game has ended! Waiting for players to join the next round."},
+                       namespace='/game')
+    socketio.emit('game_reset', {}, namespace='/game')
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
+    global game_in_progress, players
     sid = request.sid
-    start_time = player_start_times.pop(sid, None)
-    if start_time:
-        survival_seconds = (datetime.now() - start_time).total_seconds()
-        username = players.get(sid, {}).get("username", "Unknown")
-        top_survivors.append({
-            "username": username,
-            "seconds": round(survival_seconds)
-        })
-        top_survivors.sort(key=lambda x: -x["seconds"])
-        top_survivors[:] = top_survivors[:10]
-    players.pop(sid, None)
-    emit('players', {'players': players}, namespace='/game', broadcast=True)
 
+    if game_in_progress:
+        if sid in players:
+            del players[sid]
+
+        if len(players) == 1:
+            winner_sid = next(iter(players))  # Get the last player standing
+            winner = players[winner_sid]
+            socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+                          namespace='/game')
+            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
+            reset_game()
+            return
+    else:
+        if lobby != []:
+            for player in lobby:
+                if player['sid'] == sid:
+                    lobby.remove(player)
+                    emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
+                    break
+
+    socketio.emit('players', {'players': players}, namespace='/game')
+    
     user = users_collection.find_one({"username": session["username"]})
     previous_games_played = user.get("games_played")-1
     previous_average_tiles = user.get("average_tiles")
