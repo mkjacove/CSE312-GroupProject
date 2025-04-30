@@ -224,7 +224,9 @@ def _countdown_worker(abort_event: Event):
     start_game()
 
 def start_game():
-    global game_in_progress
+    global game_in_progress, players
+
+    players.clear()
 
     if len(lobby) < MIN_PLAYERS:
         return
@@ -243,14 +245,28 @@ def start_game():
             'username': player['username'],
             'avatar': player['avatar']
         }
+
+
+    # filtered = {}
+    # currentUsernames = {}
+    # for sid in players.keys():
+    #     user = players[sid]["username"]
+    #     currentUsernames[user] = sid
+    #
+    # for i in currentUsernames.values():
+    #     filtered[i] = players[i]
+    # players = filtered
+
     socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
+    global players
+
     sid = request.sid
     if sid not in players:
-        players[sid] = {'x': 0, 'y': 0, **_me()}
+        return
     players[sid].update({
         'x': data['x'],
         'y': data['y'],
@@ -293,6 +309,8 @@ def handle_tile(data):
 
 @socketio.on('reset', namespace='/game')
 def handle_reset():
+    global players
+
     sid = request.sid
     player = players.get(sid)
     if not player:
@@ -314,37 +332,56 @@ def handle_reset():
     else:
         # eliminate player
         emit('chat', {'text': f"{player['username']} was eliminated!"}, namespace='/game', broadcast=True)
-        print(players)
-        print(lobby)
+
+        print("before delete players: ", players)
+        if sid in players:
+            del players[sid]
+            print(f"[handle_reset]   → deleted sid, players_after={players}")
+        else:
+            print(f"[handle_reset]   → sid not found in players! (maybe already removed)")
 
         # notify *only* the eliminated player to redirect
         emit('eliminated',  namespace='/game', to=sid)
 
-        del players[sid]
         emit('players', {'players': players}, namespace='/game', broadcast=True)
 
     if len(players) == 1:
         winner_sid = next(iter(players))  # Get the last player standing
         winner = players[winner_sid]
-        emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
-             namespace='/game', broadcast=True)
-        emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid, broadcast=True)
+        socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
+                      namespace='/game')
+        socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
         reset_game()
         return
 
 def reset_game():
     global game_in_progress, lobby, players
+
+    global tile_states, tile_timestamps, countdown_abort_event
+
+     # 1) Flip the flag so new connects queue into the lobby
     game_in_progress = False
-    players = {}
-    lobby = []
 
-    socketio.emit('chat', {'text': "The game has ended! Waiting for players to join the next round."}, namespace='/game')
+     # 2) Clear out all player lists
+    lobby.clear()
+    players.clear()
 
+      # 3) Reset every board’s tiles & timers
+    for b in (1, 2, 3):
+        tile_states[b].clear()
+        tile_timestamps[b].clear()
+
+    # 4) Forget any countdown in flight
+    countdown_abort_event = None
+
+      # 5) Announce end-of-game and send clients back to lobby view
+    socketio.emit('chat', {'text': "🏁 The game has ended! Waiting for players to join the next round."},
+                       namespace='/game')
     socketio.emit('game_reset', {}, namespace='/game')
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect():
-    global game_in_progress
+    global game_in_progress, players
     sid = request.sid
 
     if game_in_progress:
@@ -355,16 +392,17 @@ def ws_disconnect():
             winner_sid = next(iter(players))  # Get the last player standing
             winner = players[winner_sid]
             socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
-                 namespace='/game')
-            socketio.emit('victory', {'redirect': '/'}, namespace='/game', to=winner_sid)
+                          namespace='/game')
+            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game')
             reset_game()
             return
     else:
-        for player in lobby:
-            if player['sid'] == sid:
-                lobby.remove(player)
-                emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
-                break
+        if lobby != []:
+            for player in lobby:
+                if player['sid'] == sid:
+                    lobby.remove(player)
+                    emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
+                    break
 
     socketio.emit('players', {'players': players}, namespace='/game')
 
