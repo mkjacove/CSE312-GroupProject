@@ -417,8 +417,15 @@ def handle_reset():
         winner = players[winner_sid]
         socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                       namespace='/game')
+
+        user = users_collection.find_one({"username": winner["username"]})
+        users_collection.update_one({"username": user["username"]},
+                                    {"$set": {"games_won": user["games_won"] + 1}})
+
         for player in lobby:
             socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
+            users_collection.update_one({"username": player["username"]},
+                                        {"$set": {"games_played": user["games_played"] + 1}})
         reset_game()
         return
 
