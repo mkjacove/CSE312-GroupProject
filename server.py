@@ -51,6 +51,7 @@ app.register_blueprint(auth_bp)
 
 lobby = []
 game_in_progress = False
+first_death_recorded = False
 MIN_PLAYERS = 2  # Minimum number of players to start the game
 
 # Serve images
@@ -140,17 +141,22 @@ def play():
 
 @app.route("/api/users/@me")
 def get_current_user():
-    if "username" in session and users_collection.find_one({"username": session["username"]}):
-        user = users_collection.find_one({"username": session["username"]})
+    if "username" in session and (user := users_collection.find_one({"username": session["username"]})):
+        achievements = {
+            "winner": user.get("games_won", 0) >= 3,
+            "consolation": user.get("consolation_prize", False),
+            "tile_breaker": user.get("total_tiles", 0) >= 500
+        }
+
         return jsonify({
             "id": True,
             "username": session["username"],
             "avatar": user.get("avatar", "user.webp"),
-            "current_tiles": user.get("current_tiles"),
-            "games_played": user.get("games_played"),
-            "games_won": user.get("games_won"),
-            "average_tiles": user.get("average_tiles")
-
+            "current_tiles": user.get("current_tiles", 0),
+            "games_played": user.get("games_played", 0),
+            "games_won": user.get("games_won", 0),
+            "average_tiles": user.get("average_tiles", 0),
+            "achievements": achievements
         })
     return jsonify({"id": None})
 
@@ -277,8 +283,8 @@ def _countdown_worker(abort_event: Event):
     start_game()
 
 def start_game():
-    global game_in_progress, players
-
+    global game_in_progress, players, first_death_recorded
+    first_death_recorded = True
     players.clear()
 
     if len(lobby) < MIN_PLAYERS:
@@ -419,6 +425,16 @@ def handle_reset():
 
         print("before delete players: ", players)
         if sid in players:
+            username = players[sid]["username"]
+
+            global first_death_recorded
+            if not first_death_recorded:
+                first_death_recorded = True
+                users_collection.update_one(
+                    {"username": username},
+                    {"$set": {"consolation_prize": True}}
+                )
+
             del players[sid]
             print(f"[handle_reset]   → deleted sid, players_after={players}")
 
@@ -436,6 +452,11 @@ def handle_reset():
         user = users_collection.find_one({"username": winner["username"]})
         users_collection.update_one({"username": user["username"]},
                                     {"$set": {"games_won": user["games_won"] + 1}})
+        user = users_collection.find_one({"username": winner["username"]})
+
+        if user["games_won"] >= 3:
+            users_collection.update_one({"username": user["username"]},
+                                        {"$set": {"winner": True}})
 
         for player in lobby:
             socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
@@ -501,12 +522,17 @@ def ws_disconnect(sid, *args):
     games_played = user.get("games_played", 0)
     previous_games_played = games_played - 1
     previous_average_tiles = user.get("average_tiles", 0)
+    users_collection.update_one({"username": session["username"]},
+                                {"$set": {"total_tiles": user.get("total_tiles") + user.get("current_tiles", 0)}})
     total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles", 0)
     new_average = total_tiles/user.get("games_played", 1)
     users_collection.update_one({"username": session["username"]},
                                 {"$set": {"average_tiles": new_average}})
     session["average_tiles"] = new_average
     session.modified = True
+    if user.get("total_tiles") >= 500:
+        users_collection.update_one({"username": session["username"]},
+                                    {"$set": {"total_tiles": True}})
 
 @app.before_request
 def log_request_info():

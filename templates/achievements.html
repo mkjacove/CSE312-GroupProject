@@ -63,9 +63,14 @@
 
     <!-- Achievements Content -->
     <main class="pt-[80px] flex flex-col items-center animate-fadeIn px-4">
-      <div class="max-w-xl w-full bg-darkblue/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
-        <h1 class="text-4xl font-bold mb-4 text-center text-tileYellow">Achievements</h1>
-        <p class="text-center text-gray-300">🎉 Coming soon – stay tuned for your in-game milestones!</p>
+      <div class="max-w-xl w-full bg-darkblue/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg space-y-6">
+        <h1 class="text-4xl font-bold text-tileYellow text-center">Achievements</h1>
+
+
+        <!-- Achievement List -->
+        <div id="achievementsList" class="space-y-4 text-gray-200">
+          <!-- JS will populate this -->
+        </div>
       </div>
     </main>
 
@@ -88,7 +93,54 @@
         }
       }
 
+      function navigatePage(select) {
+        const url = select.value;
+        if (url) {
+          window.location.href = url;
+        }
+      }
+
+      function renderAchievements(achievements = {}) {
+        const list = document.getElementById("achievementsList");
+
+        const data = [
+          {
+            key: "winner",
+            title: "🏆 Winner",
+            description: "Win 3 Games"
+          },
+          {
+            key: "consolation",
+            title: "😵 Consolation Prize",
+            description: "Be the first to die"
+          },
+          {
+            key: "tile_breaker",
+            title: "🧱 Tile Breaker",
+            description: "Break 500 Tiles"
+          },
+        ];
+
+        list.innerHTML = data.map(a => {
+          const unlocked = achievements[a.key];
+          return `
+            <div class="p-4 rounded-lg ${unlocked ? "bg-green-600" : "bg-gray-700/70"} shadow-md">
+              <h2 class="text-xl font-bold">${a.title}</h2>
+              <p class="text-sm">${a.description}</p>
+              <p class="mt-1 text-sm italic">${unlocked ? "Unlocked!" : "Locked"}</p>
+            </div>
+          `;
+        }).join("");
+      }
+
+      async function fetchAchievements() {
+        const profile = await (await fetch("/api/users/@me")).json();
+        const achievements = profile.achievements || {};
+        renderAchievements(achievements);
+      }
+
       main();
+      fetchAchievements();
     </script>
   </body>
 </html>
