@@ -275,6 +275,7 @@ socket.on("time-until-reset", data => {
 // ─── MOVE + EMIT ──────────────────────────────────────────────────────────
 let lastEmit = 0;
 function update() {
+  onPlayerMove(playerX, playerY);
   if (isEliminated) return;
   let dx = 0, dy = 0;
 
@@ -520,7 +521,20 @@ setInterval(() => {
 //   }
 //   requestAnimationFrame(updateSurvivalTimerUI);
 // }
-
+let lastTile = "";
+function onPlayerMove(playerX, playerY) {
+  const tileX = Math.floor(playerX / tileSize);
+  const tileY = Math.floor(playerY / tileSize);
+  const newTile = `${tileX},${tileY}`;
+  if (newTile !== lastTile) {
+    lastTile = newTile;
+    const board = playerBoardLevel;
+    const tileState = tileStates[board][newTile];
+    if (!tileState) {
+      socket.emit("stepped-on-white", {key: newTile,board,username: window.PLAYER_USERNAME});
+    }
+  }
+}
 function gameLoop() {
   update();
   draw();

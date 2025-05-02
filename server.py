@@ -187,13 +187,11 @@ players = {}  # sid → { x, y, username, board_level, avatar }
 @socketio.on('stepped-on-white', namespace='/game')
 def stepped_on_white(data):
     print(data)
-    x = session.get('current_tiles', 0) + 1
-    session['current_tiles'] = x
-    session.modified = True
-    print(session)
-    users_collection.update_one(
-        {"username": session["username"]},
-        {"$set": {"current_tiles": x}})
+    user = data["username"]
+    print(user)
+    previous_tiles = users_collection.find_one({"username": user}).get('current_tiles')
+    users_collection.update_one({"username": user},{"$set": {"current_tiles": previous_tiles+1}})
+    print(users_collection.find_one({"username": user}).get('current_tiles'))
     return
 
 
@@ -284,15 +282,14 @@ def start_game():
             'username': player['username'],
             'avatar': player['avatar']
         }
+        user = users_collection.find_one({"username": players[sid]["username"]})
+        previous_games_played = user.get("games_played")
+        users_collection.update_one({"username": players[sid]["username"]},
+                                    {"$set": {"games_played": previous_games_played + 1}})
+        users_collection.update_one({"username": players[sid]["username"]}, {"$set": {"current_tiles": 0}})
 
     socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
-
-    user = users_collection.find_one({"username": session["username"]})
-    previous_games_played = user.get("games_played")
-    users_collection.update_one({"username": session["username"]}, {"$set": {"games_played": previous_games_played+1}})
-    session["games_played"] = previous_games_played+1
-    session.modified = True
 
 @socketio.on('rejoin', namespace='/game')
 def handle_rejoin():
@@ -426,8 +423,6 @@ def handle_reset():
 
         for player in lobby:
             socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
-            users_collection.update_one({"username": player["username"]},
-                                        {"$set": {"games_played": user["games_played"] + 1}})
         reset_game()
         return
 
