@@ -229,6 +229,7 @@ def ws_connect():
     player = {'sid': sid, 'username': session["username"],  'avatar': session.get("avatar", "user.webp")}
     lobby.append(player)
 
+    socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
     emit('chat', {'text': f"{player['username']} has joined the lobby!"}, namespace='/game', broadcast=True)
     # Check if the game can start (at least MIN_PLAYERS)
     if len(lobby) >= MIN_PLAYERS:
@@ -324,7 +325,8 @@ def handle_rejoin():
          {'text': f"{player['username']} has joined the lobby!"},
          namespace='/game',
          broadcast=True)
-
+    socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
+    
     # If they've just pushed you over the player count, start a new countdown
     if len(lobby) >= MIN_PLAYERS:
         schedule_countdown()
@@ -472,6 +474,7 @@ def ws_disconnect(sid, *args):
                 socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
             reset_game()
             return
+        
     else:
         if lobby != []:
             for player in lobby:
@@ -480,6 +483,7 @@ def ws_disconnect(sid, *args):
                     emit('chat', {'text': f"{player['username']} has left the lobby."}, namespace='/game', broadcast=True)
                     break
 
+    socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
     
     user = users_collection.find_one({"username": session["username"]})

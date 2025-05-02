@@ -67,43 +67,24 @@
         font-size: 14px;
         z-index: 15;
       }
-      #countdown {
-        color: #fff;
-        text-shadow: 0 0 5px rgba(0,0,0,0.8);
-      }
     </style>
   </head>
 
   <body>
     <div id="canvas-container">
-<!--      <div id="my-timer" class="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded z-30 text-center">-->
-<!--        <span class="font-bold text-lg">Survival Time:</span>-->
-<!--        <span id="timer-seconds">0</span> seconds-->
-<!--      </div>-->
-<!--      <div id="reset-timer" class="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 px-4 py-2 rounded z-30 text-center">-->
-<!--      <span class="font-bold text-lg">Server Reset In:</span>-->
-<!--      <span id="reset-seconds">300</span> seconds-->
-<!--    </div>-->
-<!--      <div id="leaderboard" class="absolute top-24 right-10 bg-black bg-opacity-50 p-4 rounded z-20">-->
-<!--        <h2 class="text-xl font-bold mb-2">Top Survivors</h2>-->
-<!--        <ul id="leaderboard-list" class="text-sm"></ul>-->
-<!--      </div>-->
+      <!-- LOBBY OVERLAY -->
+      <div id="lobby-overlay"
+           class="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center text-white p-4">
+        <h2 class="text-2xl font-bold mb-4">Waiting for players…</h2>
+        <ul id="lobby-player-list" class="mb-6 space-y-2">
+          <!-- populated by JS -->
+        </ul>
+        <div id="lobby-countdown" class="text-4xl font-mono">
+          Waiting…
+        </div>
+      </div>
+
       <button id="fullscreen-btn">Fullscreen</button>
-      <!-- countdown overlay -->
-      <div
-        id="countdown"
-        style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          font-size: 3rem;
-          font-weight: bold;
-          pointer-events: none;
-          z-index: 20;
-          display: none;
-        "
-        ></div>
       <canvas id="miniMapCanvas" width="200" height="200"></canvas>
       <canvas id="gameCanvas"></canvas>
       <div id="chat-log"></div>

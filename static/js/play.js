@@ -63,6 +63,87 @@ if (window.PLAYER_AVATAR) {
 // --- Socket.IO setup
 const socket = io('/game', { transports: ['websocket'] });
 
+// Configuration
+const MIN_PLAYERS = 2;
+const COUNTDOWN_SECONDS = 10;
+
+// Lobby state
+let lobbyCount = 0,
+    countdown = COUNTDOWN_SECONDS,
+    countdownInterval = null;
+
+// Grab lobby DOM nodes
+const lobbyOverlay      = document.getElementById("lobby-overlay");
+const lobbyPlayerList   = document.getElementById("lobby-player-list");
+const lobbyCountdownEl  = document.getElementById("lobby-countdown");
+
+// Handle server “lobby” broadcasts
+socket.on("lobby", data => {
+  const players = data.players;            // [ 'alice', 'bob', ... ]
+  lobbyCount = players.length;
+
+  // 1) update player list
+  lobbyPlayerList.innerHTML = "";
+  players.forEach(name => {
+    const li = document.createElement("li");
+    li.textContent = name;
+    lobbyPlayerList.appendChild(li);
+  });
+
+  // 2) if enough players, start countdown (if not already running)
+  if (lobbyCount >= MIN_PLAYERS) {
+    if (!countdownInterval) {
+      lobbyCountdownEl.textContent = `${countdown}`;  
+      countdownInterval = setInterval(tickLobbyCountdown, 1000);
+    }
+  } else {
+    // too few players: reset
+    resetLobbyCountdown();
+    lobbyCountdownEl.textContent = `Waiting… (${MIN_PLAYERS}-${lobbyCount < MIN_PLAYERS ? "waiting" : ""})`;
+  }
+});
+
+// Countdown “tick”
+function tickLobbyCountdown() {
+  countdown--;
+  lobbyCountdownEl.textContent = countdown;
+
+  if (countdown <= 0) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+    // tell server to start the game (or wait for server to broadcast "game_start")
+    socket.emit("start_game");        // your server needs to listen for this…
+    hideLobby();
+  }
+}
+
+// Reset countdown if players drop below threshold
+function resetLobbyCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+  countdown = COUNTDOWN_SECONDS;
+}
+
+// Hide overlay & kick off gameLoop if not already started
+function hideLobby() {
+  lobbyOverlay.classList.add("hidden");
+  if (!gameStarted) {  
+    socket.emit("rejoin");   // rejoin logic, if you want fresh init
+    // the server’s next "game_start" can then trigger gameLoop()
+  }
+}
+
+// (You can choose instead to rely on server’s "game_start" event as you already have)
+socket.on("game_start", () => {
+  hideLobby();
+  if (!gameStarted) {
+    gameStarted = true;
+    gameLoop();
+  }
+});
+
 socket.on("connect",    () => console.log("Socket connected:", socket.id));
 socket.on("disconnect", () => console.log("Socket disconnected"));
 socket.on("eliminated", () => {
