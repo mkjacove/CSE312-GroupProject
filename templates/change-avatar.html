@@ -2,125 +2,131 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>Change Avatar</title>
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TileFall – Change Avatar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
-            colors: {
-              primary: "#0f172a",
-              accent: "#38bdf8",
-              glass: "rgba(255, 255, 255, 0.1)",
+            fontFamily: {
+              pixel: ["Poppins", "sans-serif"],
             },
-            backdropBlur: {
-              xs: "2px",
+            colors: {
+              darkblue: "#0b0f1a",
+              tileYellow: "#ffc300",
+              tileOrange: "#ff5733",
+              tileRed: "#c70039",
+              glass: "rgba(255,255,255,0.05)",
             },
           },
         },
       };
     </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        body {
-          @apply font-[Poppins] text-white bg-gradient-to-br from-primary to-gray-800;
-        }
-        h1 {
-          @apply text-4xl font-bold;
-        }
-        input,
-        textarea {
-          @apply text-black focus:outline-none focus:ring-2 focus:ring-accent;
-        }
+    <link rel="icon" href="/images/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+    <style>
+      body { 
+        font-family: "Poppins", sans-serif; 
+        background: linear-gradient(135deg,#0b0f1a,#1a1f2e);
       }
     </style>
   </head>
-  <body>
-    <div class="flex flex-row w-full h-screen">
-      <!-- Sidebar -->
-      <navbar class="flex flex-col px-10 py-8 min-w-[19rem] h-full border-r border-white/10 bg-glass backdrop-blur-md shadow-md rounded-tr-2xl rounded-br-2xl">
-        <a href="/"><h1 class="mb-8 text-accent">312game.com</h1></a>
-        <div class="flex flex-col gap-3">
-          <div class="nav-group flex items-center gap-3"><i data-lucide="house"></i><a href="/">Home</a></div>
-          <div class="nav-group flex items-center gap-3"><i data-lucide="smile"></i><a href="/play">Play Game</a></div>
-          <div class="nav-group flex items-center gap-3"><i data-lucide="trophy"></i><a href="/leaderboard">Leaderboard</a></div>
-          <div class="nav-group flex items-center gap-3"><i data-lucide="chart-column"></i><a href="/player-statistics">Player Statistics</a></div>
-          <div class="nav-group flex items-center gap-3"><i data-lucide="award"></i><a href="/achievements">Achievements</a></div>
-          <div class="nav-group flex items-center gap-3"><i data-lucide="circle-user-round"></i><a href="/change-avatar">Change Avatar</a></div>
-        </div>
-      </navbar>
-
-      <!-- Main Content -->
-      <div class="flex flex-col items-center justify-center flex-grow gap-6 px-8">
-        <h1 class="text-accent mb-4">Change Your Avatar</h1>
-
-        <!-- Upload Form -->
-        <form id="avatar-form" method="POST" action="/change-avatar" enctype="multipart/form-data" class="flex flex-col items-center gap-4 w-full max-w-md">
-          <div id="drop-area" class="w-full border-2 border-dashed border-white/20 rounded-xl p-6 text-center transition hover:border-accent bg-glass backdrop-blur-sm">
-            <p class="mb-2 text-gray-300">Drag and drop an image file here, or click to select</p>
-            <input id="file-input" name="avatar" type="file" accept="image/*" class="hidden" />
-            <button type="button" onclick="document.getElementById('file-input').click()" class="mt-2 px-4 py-2 bg-accent text-black rounded hover:bg-sky-300">Choose File</button>
-          </div>
-
-          <button type="submit" class="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition">Apply</button>
-        </form>
-        <div class="text-center mt-4">
-          <p class="text-gray-300 mb-2">Current Avatar:</p>
-          <img
-            id="current-avatar"
-            src="{{ url_for('serve_image', filename=session.get('avatar', 'user.webp')) }}"
-            alt="Current Avatar"
-            class="w-40 h-40 rounded-full border-4 border-white shadow-lg object-cover"
-          />
+  <body class="text-white font-pixel">
+    <!-- Top Nav -->
+    <nav class="fixed top-0 w-full bg-darkblue/90 backdrop-blur-md z-50">
+      <div class="max-w-4xl mx-auto flex items-center justify-between p-4">
+        <a href="/" class="text-2xl font-bold text-tileYellow hover:text-tileOrange">TileFall</a>
+        <div>
+          <a id="logout-button" href="/logout" class="px-3 py-1 bg-tileRed rounded hover:bg-red-700 transition hidden">Logout</a>
+          <a id="login-button" href="/login" class="px-3 py-1 bg-tileYellow text-darkblue rounded hover:bg-yellow-400 transition">Login</a>
+          <a id="register-button" href="/register" class="px-3 py-1 bg-tileYellow text-darkblue rounded hover:bg-yellow-400 transition">Register</a>
         </div>
       </div>
-    </div>
+    </nav>
 
-    <!-- Logout & Greeting -->
-    <div class="absolute top-4 right-4 flex items-center space-x-4">
-      <p class="text-white">Hello, {{ username }}!</p>
-      <form method="POST" action="/logout">
-        <button class="px-4 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 transition">Logout</button>
-      </form>
-    </div>
+    <!-- Content Card -->
+    <main class="pt-[72px] flex justify-center items-start min-h-screen px-4">
+      <div class="bg-darkblue/70 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden w-full max-w-2xl">
+        <div class="grid grid-cols-1 md:grid-cols-2">
+          <!-- Form Side -->
+          <div class="p-8 space-y-6">
+            <h1 class="text-3xl font-bold text-tileYellow">Change Avatar</h1>
+            <form id="avatar-form" method="POST" action="/change-avatar" enctype="multipart/form-data" class="space-y-4">
+              <div
+                id="drop-area"
+                class="h-40 border-2 border-dashed border-white/30 rounded-lg flex flex-col justify-center items-center bg-glass cursor-pointer transition hover:border-tileYellow"
+                onclick="fileInput.click()"
+              >
+                <p class="text-gray-300">Drag & drop or click to select</p>
+                <input id="file-input" name="avatar" type="file" accept="image/*" class="hidden" />
+              </div>
+              <button type="submit" class="w-full py-2 bg-tileOrange hover:bg-orange-500 rounded-lg font-semibold transition">Apply</button>
+            </form>
+          </div>
 
-    <!-- Icons -->
+          <!-- Preview Side -->
+          <div class="p-8 bg-darkblue/80 flex flex-col items-center justify-center space-y-4">
+            <p class="text-gray-300">Current Avatar</p>
+            <img
+              id="current-avatar"
+              src="{{ url_for('serve_image', filename=session.get('avatar','user.webp')) }}"
+              alt="Current Avatar"
+              class="w-32 h-32 rounded-full border-4 border-tileYellow shadow-lg object-cover"
+            />
+            <p class="text-gray-300 mt-4">New Preview</p>
+            <img id="avatar-preview" src="" alt="Preview" class="w-32 h-32 rounded-full border-4 border-tileOrange shadow-lg object-cover opacity-0 transition-opacity duration-300"/>
+          </div>
+        </div>
+      </div>
+    </main>
+
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
       lucide.createIcons();
 
+      (async function() {
+        const profile = await (await fetch("/api/users/@me")).json();
+        const loginBtn = document.getElementById("login-button");
+        const regBtn   = document.getElementById("register-button");
+        const logoutBtn= document.getElementById("logout-button");
+        if (profile.id) {
+          loginBtn.style.display = "none";
+          regBtn.style.display   = "none";
+          logoutBtn.style.display= "inline-block";
+        }
+      })();
+
       const fileInput = document.getElementById("file-input");
-      const avatarPreview = document.getElementById("avatar-preview");
-      const dropArea = document.getElementById("drop-area");
+      const dropArea  = document.getElementById("drop-area");
+      const preview   = document.getElementById("avatar-preview");
 
       dropArea.addEventListener("dragover", e => {
         e.preventDefault();
-        dropArea.classList.add("border-accent");
+        dropArea.classList.add("border-tileYellow");
       });
       dropArea.addEventListener("dragleave", () => {
-        dropArea.classList.remove("border-accent");
+        dropArea.classList.remove("border-tileYellow");
       });
       dropArea.addEventListener("drop", e => {
         e.preventDefault();
-        dropArea.classList.remove("border-accent");
-        const files = e.dataTransfer.files;
-        if (files.length && files[0].type.startsWith("image/")) {
-          fileInput.files = files;
-          previewImage(files[0]);
-        }
+        dropArea.classList.remove("border-tileYellow");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) showPreview(file);
       });
       fileInput.addEventListener("change", () => {
-        if (fileInput.files.length) previewImage(fileInput.files[0]);
+        const file = fileInput.files[0];
+        file && showPreview(file);
       });
 
-      function previewImage(file) {
+      function showPreview(file) {
         const reader = new FileReader();
-        reader.onload = e => avatarPreview.src = e.target.result;
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.style.opacity = 1;
+        };
         reader.readAsDataURL(file);
       }
     </script>

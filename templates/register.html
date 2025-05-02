@@ -2,9 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Register / Login</title>
+    <title>Register</title>
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <link rel="icon" href="/images/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,10 +24,6 @@
     </script>
     <style type="text/tailwindcss">
       @layer base {
-        h1 {
-          @apply text-4xl font-bold;
-        }
-
         input {
           @apply text-black focus:outline-none focus:ring-0;
         }
@@ -39,24 +35,33 @@
         background-color: #021217;
         color: white;
       }
-
       .error-message {
         position: fixed;
         top: 20px;
         right: 20px;
-        background-color: rgba(255, 0, 0, 0.8);
+        background-color: rgba(255, 0, 0, 0.85);
         color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
+        padding: 12px 24px;
+        border-radius: 6px;
         font-size: 16px;
         display: none;
         z-index: 1000;
       }
     </style>
   </head>
-  <body class="flex items-center justify-center min-h-screen">
+  <body class="pt-[64px] flex flex-col items-center justify-start min-h-screen">
+    <!-- Fixed Top Nav -->
+    <nav class="fixed top-0 left-0 w-full bg-gray-900 shadow-md z-50">
+      <div class="max-w-7xl mx-auto flex items-center justify-between p-4">
+        <a href="/" class="text-xl font-bold text-white hover:text-gray-300">TileFall</a>
+      </div>
+    </nav>
+
+    <!-- Error Message -->
     <div id="error-message" class="error-message"></div>
-    <div class="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
+
+    <!-- Register Form -->
+    <div class="mt-12 w-full max-w-md bg-gray-800 p-8 rounded-2xl shadow-lg">
       <h2 class="text-2xl font-semibold mb-6 text-center">Register</h2>
       <form onsubmit="handleSubmit(event)" class="flex flex-col gap-4" id="registerform">
         <input
@@ -87,43 +92,34 @@
     <script>
       function handleSubmit(event) {
         event.preventDefault();
-
         const formData = new FormData(event.target);
-        let urlEncodedData = new URLSearchParams(formData).toString();
+        const body = new URLSearchParams(formData).toString();
 
-        fetch('/register', {
-          method: 'POST',
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+        fetch("/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
           redirect: "manual",
-          body: urlEncodedData
+          body,
         })
-        .then(async (response) => {
-          if (!response.ok) {
-            const errorText = await response.text();
-            showError(errorText || "Registration failed.");
-            throw new Error(errorText);
-          }
-          hideError();
-          console.log("Registration successful.");
-          // Redirect to homepage with registerSuccess flag
-          window.location.href = "/?registerSuccess=1";
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-        });
+          .then(async (res) => {
+            if (!res.ok) {
+              const text = await res.text();
+              showError(text || "Registration failed.");
+              throw new Error(text);
+            }
+            hideError();
+            window.location.href = "/?registerSuccess=1";
+          })
+          .catch((e) => console.error("Register error:", e));
       }
 
-      function showError(message) {
-        const errorBox = document.getElementById("error-message");
-        errorBox.innerText = message;
-        errorBox.style.display = "block";
+      function showError(msg) {
+        const box = document.getElementById("error-message");
+        box.innerText = msg;
+        box.style.display = "block";
       }
-
       function hideError() {
-        const errorBox = document.getElementById("error-message");
-        errorBox.style.display = "none";
+        document.getElementById("error-message").style.display = "none";
       }
     </script>
   </body>

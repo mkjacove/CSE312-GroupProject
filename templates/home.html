@@ -1,163 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>312game.com</title>
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TileFall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="/images/favicon.ico" />
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              pixel: ["'Poppins'", "sans-serif"]
+            },
             colors: {
-              primary: "#0f172a", // slate-900
-              accent: "#38bdf8",  // sky-400
-              glass: "rgba(255, 255, 255, 0.1)",
+              darkblue: "#0b0f1a",
+              tileYellow: "#ffc300",
+              tileOrange: "#ff5733",
+              tileRed: "#c70039",
             },
-            backdropBlur: {
-              xs: "2px",
-            },
-          },
-        },
+          }
+        }
       };
     </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        body {
-          @apply font-[Poppins] text-white bg-gradient-to-br from-primary to-gray-800;
-        }
-
-        h1 {
-          @apply text-4xl font-bold;
-        }
-
-        input,
-        textarea {
-          @apply text-black focus:outline-none focus:ring-2 focus:ring-accent;
-        }
-      }
-    </style>
     <style>
-      .nav-group a {
-        transition: all 0.2s ease-in-out;
+      body {
+        background: linear-gradient(to bottom right, #0b0f1a, #1a1f2e);
       }
-      .nav-group a:hover {
-        color: #38bdf8;
-        text-decoration: underline;
+
+      .nav-link {
+        @apply text-white hover:text-tileYellow transition-colors duration-200;
+      }
+
+      .fade-in {
+        animation: fadeIn 1s ease-out forwards;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
   </head>
-  <body>
-    <div class="flex flex-row w-full h-screen">
-      <!-- Alert Popup -->
-      <div class="relative">
-        <div
-          id="alert-container"
-          class="fixed top-16 right-4 flex flex-col-reverse gap-4 min-w-[300px] [&>*]:transition-all [&>*]:duration-300 z-50"
-        ></div>
+  <body class="text-white font-pixel">
+    <!-- Navigation -->
+    <nav class="w-full px-6 py-4 flex justify-between items-center bg-darkblue shadow-md">
+      <div class="flex items-center gap-4">
+        <img src="/images/tilefall_logo.png" alt="TileFall Logo" class="w-10 h-10" />
+        <h1 class="text-xl font-bold text-tileYellow">TILEFALL</h1>
       </div>
-
-      <!-- Sidebar -->
-      <navbar class="flex flex-col px-10 py-8 min-w-[19rem] h-full border-r border-white/10 bg-glass backdrop-blur-md shadow-md rounded-tr-2xl rounded-br-2xl">
-        <a href="/">
-          <h1 class="mb-8 text-accent">312game.com</h1>
-        </a>
-        <div class="flex flex-col gap-3">
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="house"></i>
-            <a href="/">Home</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="smile"></i>
-            <a href="/play">Play Game</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="trophy"></i>
-            <a href="/leaderboard">Leaderboard</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="chart-column"></i>
-            <a href="/player-statistics">Player Statistics</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="award"></i>
-            <a href="/achievements">Achievements</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="circle-user-round"></i>
-            <a href="/change-avatar">Change Avatar</a>
-          </div>
-        </div>
-      </navbar>
-
-      <!-- Main Content -->
-      <div class="flex flex-col gap-4 flex-grow">
-        <div class="flex justify-between items-center px-8 py-4 border-b border-white/10 backdrop-blur-sm">
-          <p></p>
-          <div class="flex flex-row gap-x-2">
-            <a
-              id="login-button"
-              href="/login"
-              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
-            >
-              Login
-            </a>
-            <a
-              id="register-button"
-              href="/register"
-              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
-            >
-              Register
-            </a>
-
-          </div>
-          <div id="logged-in" class="hidden flex-row items-center gap-4">
-            <p id="hello-username">Hello, {Insert user here}!</p>
-            <a
-              href="/logout"
-              class="px-4 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 transition"
-            >
-              Logout
-            </a>
-          </div>
-        </div>
-
-        <div class="h-full mx-8 pb-6">
-          <h1 class="mb-4">Welcome to CSE312 TileFall!</h1>
-
-          <div class="flex flex-col gap-2 mb-8 pr-8">
-            <p class="text-lg text-gray-300">
-              🏃‍♂️ Use the Arrow Keys to Run across tiles — they break behind you!
-            </p>
-            <p class="text-lg text-gray-300">
-              🎯 Sprint with Shift to make other players fall while you stay standing!
-            </p>
-            <p class="text-lg text-gray-300">
-              ⬇️ Fall through gaps to lower layers — fall too far and you're out!
-            </p>
-            <p class="text-lg text-gray-300">
-              <b>Create an account to start playing!</b>
-            </p>
-          </div>
-        </div>
-          <div class="flex justify-center mb-20">
-            <img src="/images/tilefall_logo.png" alt="TileFall Logo" class="w-64 h-auto">
-            </div>
-          </div>
+      <div class="flex gap-6 text-sm">
+        <a href="/play" class="nav-link">Play Game</a>
+        <a href="/player-statistics" class="nav-link">Stats</a>
+        <a href="/change-avatar" class="nav-link">Avatar</a>
+        <a href="/leaderboard" class="nav-link">Leaderboard</a>
+        <a href="/achievements" class="nav-link">Achievements</a>
       </div>
+      <div class="flex gap-2 text-sm">
+        <a id="login-button" href="/login" class="px-4 py-2 rounded bg-tileYellow text-black hover:bg-yellow-400">Login</a>
+        <a id="register-button" href="/register" class="px-4 py-2 rounded bg-tileYellow text-black hover:bg-yellow-400">Register</a>
+        <div id="logged-in" class="hidden items-center gap-4">
+          <span id="hello-username" class="text-white"></span>
+          <a href="/logout" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded">Logout</a>
+        </div>
+      </div>
+    </nav>
 
+    <!-- Hero Section -->
+    <section class="px-6 py-20 flex flex-col items-center text-center fade-in">
+      <img src="/images/tilefall_logo.png" alt="TileFall Logo" class="w-48 h-auto mb-6" />
+      <h2 class="text-4xl font-bold mb-4">Welcome to TileFall!</h2>
+      <p class="text-lg text-gray-300 max-w-xl">
+        🏃‍♂️ Run across tiles that break behind you.<br />
+        🎯 Sprint to make others fall before you do.<br />
+        ⬇️ Fall through gaps to lower levels — but fall too far and you're out!<br />
+        <strong>Create an account to start playing!</strong>
+      </p>
+    </section>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Alert Container -->
+    <div id="alert-container" class="fixed top-20 right-4 flex flex-col-reverse gap-4 z-50 min-w-[300px]"></div>
+
+    <!-- Script for login display -->
     <script>
-      lucide.createIcons();
-
       async function main() {
         const userProfile = await (await fetch("/api/users/@me")).json();
         const loginButton = document.getElementById("login-button");
@@ -169,7 +94,7 @@
           loginButton.style.display = "none";
           registerButton.style.display = "none";
           loggedIn.style.display = "flex";
-          myUsername.innerText = `Hello ${userProfile.username}!`;
+          myUsername.innerText = `Hello, ${userProfile.username}!`;
         } else {
           loginButton.style.display = "block";
           registerButton.style.display = "block";
@@ -179,59 +104,50 @@
 
       main();
     </script>
-  <script>
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("error") === "not_signed_in") {
-    alert("You must be signed in to access that page.");
-  }
-</script>
-    <!-- Place this script at the bottom of your homepage body, after the alert container element -->
-<script>
-  // Utility function to get query parameters
-  function getQueryParams() {
-    let params = {};
-    window.location.search.substring(1).split("&").forEach(function (pair) {
-      if (pair) {
-        let parts = pair.split("=");
-        params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
+
+    <!-- Success Alert -->
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "not_signed_in") {
+        alert("You must be signed in to access that page.");
       }
-    });
-    return params;
-  }
 
-  // Function to remove a parameter from the URL without reloading the page
-  function removeQueryParameter(param) {
-    const url = new URL(window.location);
-    url.searchParams.delete(param);
-    window.history.replaceState(null, '', url);
-  }
+      function getQueryParams() {
+        let params = {};
+        window.location.search.substring(1).split("&").forEach(function (pair) {
+          if (pair) {
+            let parts = pair.split("=");
+            params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1] || "");
+          }
+        });
+        return params;
+      }
 
-  // Function to display a success alert
-  function showSuccessAlert(message) {
-    const alertContainer = document.getElementById("alert-container");
-    const alertBox = document.createElement("div");
-    alertBox.className = "bg-green-500 text-white p-4 rounded shadow";
-    alertBox.innerText = message;
+      function removeQueryParameter(param) {
+        const url = new URL(window.location);
+        url.searchParams.delete(param);
+        window.history.replaceState(null, "", url);
+      }
 
-    // Append the alert to the container
-    alertContainer.appendChild(alertBox);
+      function showSuccessAlert(message) {
+        const alertContainer = document.getElementById("alert-container");
+        const alertBox = document.createElement("div");
+        alertBox.className = "bg-green-500 text-white p-4 rounded shadow";
+        alertBox.innerText = message;
+        alertContainer.appendChild(alertBox);
+        setTimeout(() => {
+          alertBox.classList.add("opacity-0", "transition-opacity", "duration-500");
+          setTimeout(() => {
+            alertContainer.removeChild(alertBox);
+          }, 500);
+        }, 3000);
+      }
 
-    // Optionally, remove the alert after a few seconds
-    setTimeout(() => {
-      alertBox.classList.add("opacity-0", "transition-opacity", "duration-500");
-      setTimeout(() => {
-        alertContainer.removeChild(alertBox);
-      }, 500);
-    }, 3000);
-  }
-
-  // Check for the loginSuccess query parameter
-  const params = getQueryParams();
-  if (params.loginSuccess === "1") {
-    showSuccessAlert("Successfully logged in!");
-    removeQueryParameter("loginSuccess");
-  }
-  </script>
-
+      const qs = getQueryParams();
+      if (qs.loginSuccess === "1") {
+        showSuccessAlert("Successfully logged in!");
+        removeQueryParameter("loginSuccess");
+      }
+    </script>
   </body>
 </html>

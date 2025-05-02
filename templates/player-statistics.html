@@ -3,223 +3,125 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>312game.com - Player Statistics</title>
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <title>TileFall – Player Statistics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              pixel: ["Poppins", "sans-serif"],
+            },
+            colors: {
+              darkblue: "#0b0f1a",
+              tileYellow: "#ffc300",
+              tileOrange: "#ff5733",
+              tileRed: "#c70039",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0", transform: "translateY(10px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+            },
+            animation: {
+              fadeIn: "fadeIn 0.5s ease-out both",
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="icon" href="/images/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: "#0f172a", // slate-900
-              accent: "#38bdf8",  // sky-400
-              glass: "rgba(255, 255, 255, 0.1)",
-            },
-            backdropBlur: {
-              xs: "2px",
-            },
-          },
-        },
-      };
-    </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        body {
-          @apply font-[Poppins] text-white bg-gradient-to-br from-primary to-gray-800;
-        }
-
-        h1 {
-          @apply text-4xl font-bold;
-        }
-
-        input,
-        textarea {
-          @apply text-black focus:outline-none focus:ring-2 focus:ring-accent;
-        }
-      }
-    </style>
     <style>
-      .nav-group a {
-        transition: all 0.2s ease-in-out;
-      }
-      .nav-group a:hover {
-        color: #38bdf8;
-        text-decoration: underline;
+      body {
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(to bottom right, #0b0f1a, #1a1f2e);
       }
     </style>
   </head>
-  <body>
-    <div class="flex flex-row w-full h-screen">
-      <!-- Sidebar -->
-      <navbar class="flex flex-col px-10 py-8 min-w-[19rem] h-full border-r border-white/10 bg-glass backdrop-blur-md shadow-md rounded-tr-2xl rounded-br-2xl">
-        <a href="/">
-          <h1 class="mb-8 text-accent">312game.com</h1>
-        </a>
-        <div class="flex flex-col gap-3">
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="house"></i>
-            <a href="/">Home</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="smile"></i>
-            <a href="/play">Play Game</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="trophy"></i>
-            <a href="/leaderboard">Leaderboard</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="chart-column"></i>
-            <a href="/player-statistics">Player Statistics</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="award"></i>
-            <a href="/achievements">Achievements</a>
-          </div>
-          <div class="nav-group flex items-center gap-3">
-            <i data-lucide="circle-user-round"></i>
-            <a href="/change-avatar">Change Avatar</a>
+  <body class="text-white font-pixel">
+    <!-- Fixed Top Nav -->
+    <nav class="fixed top-0 left-0 w-full bg-darkblue/90 backdrop-blur-md z-50">
+      <div class="max-w-7xl mx-auto flex items-center justify-between p-4">
+        <a href="/" class="text-2xl font-bold text-tileYellow hover:text-tileOrange">TileFall</a>
+        <div class="space-x-4">
+          <a id="login-button" href="/login" class="px-4 py-2 rounded-lg bg-tileYellow text-darkblue hover:bg-yellow-400 transition">Login</a>
+          <a id="register-button" href="/register" class="px-4 py-2 rounded-lg bg-tileYellow text-darkblue hover:bg-yellow-400 transition">Register</a>
+          <div id="logged-in" class="hidden flex items-center space-x-3">
+            <span id="hello-username"></span>
+            <a href="/logout" class="px-4 py-2 rounded-lg bg-tileRed hover:bg-red-700 transition">Logout</a>
           </div>
         </div>
-      </navbar>
-
-      <!-- Content Section -->
-      <div class="flex flex-col gap-4 flex-grow">
-        <div class="justify-between flex items-center px-8 py-4 border-b border-white/10 backdrop-blur-sm">
-          <p></p>
-
-          <div class="flex flex-row gap-x-2">
-            <a
-              id="login-button"
-              href="/login"
-              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
-            >
-              Login
-            </a>
-            <a
-              id="register-button"
-              href="/register"
-              class="px-4 py-2 rounded-lg text-sm bg-accent text-black hover:bg-sky-300 transition"
-            >
-              Register
-            </a>
-          </div>
-          <div id="logged-in" class="flex flex-row items-center gap-4">
-            <p id="hello-username">Hello ME_ROUTE_NOT_DONE!</p>
-
-            <a href="/logout" class="px-4 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 transition">
-              Logout
-            </a>
-          </div>
-        </div>
-
-        <!-- Empty Content Area for Game -->
-        <head>
-  <meta charset="UTF-8">
-  <title>User Stats</title>
-</head>
-<body>
-
-  <div class="h-full mx-8 h-fit overflow-y-auto pb-16 w-full">
-          <div class="flex flex-col items-center w-full">
-              <h1 class="font-bold">Player Statistics</h1>
-                        <div class="w-[500px] flex flex-col gap-6">
-
-
-
-  <select id="userDropdown" class="text-black bg-white rounded p-2">
-  <option value="">-- Select a user --</option>
-</select>
-
-  <div id="userStats" style="margin-top: 20px;">
-    <p><strong>Games Played:</strong> <span id="games_played">-</span></p>
-    <p><strong>Games Won:</strong>:</strong> <span id="games_won">-</span></p>
-    <p><strong>Average Tiles:</strong> <span id="average_tiles">-</span></p>
-  </div>
- </div>
- </div>
-          </div>
-  <script>
-    async function fetchUsers() {
-      const response = await fetch('/api/users');
-      const users = await response.json();
-      const dropdown = document.getElementById('userDropdown');
-
-      users.forEach(user => {
-        const option = document.createElement('option');
-        option.value = user.username;        // Use username instead of id
-        option.textContent = user.username;  // Display username
-        dropdown.appendChild(option);
-      });
-    }
-
-    async function fetchUserStats(userId) {
-      const response = await fetch(`/api/users/${userId}/stats`);
-      const stats = await response.json();
-
-      document.getElementById('games_played').textContent = stats.games_played ?? '-';
-      document.getElementById('games_won').textContent = stats.games_won ?? '-';
-      document.getElementById('average_tiles').textContent = stats.average_tiles ?? '-';
-    }
-
-    document.getElementById('userDropdown').addEventListener('change', (event) => {
-  const selectedUsername = event.target.value; // use username now
-
-  if (!selectedUsername) {
-    return;
-  }
-
-  fetch(`/api/users/${selectedUsername}/stats`)  // <-- username in URL
-    .then(response => response.json())
-    .then(stats => {
-      document.getElementById('games_played').textContent = stats.games_played;
-      document.getElementById('games_won').textContent = stats.games_won;
-      document.getElementById('average_tiles').textContent = stats.average_tiles;
-    })
-    .catch(error => {
-      console.error('Error fetching user stats:', error);
-    });
-});
-
-    // Load users when the page loads
-    fetchUsers();
-  </script>
-
-</body>
       </div>
-    </div>
+    </nav>
+
+    <!-- Player Statistics Content -->
+    <main class="pt-[80px] flex flex-col items-center animate-fadeIn px-4">
+      <div class="max-w-xl w-full bg-darkblue/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg space-y-6">
+        <h1 class="text-4xl font-bold text-tileYellow text-center">Player Statistics</h1>
+
+        <div class="flex flex-col space-y-4">
+          <select id="userDropdown" class="p-2 rounded bg-white text-darkblue">
+            <option value="">-- Select a user --</option>
+          </select>
+
+          <div id="userStats" class="space-y-2 text-gray-200">
+            <p><strong>Games Played:</strong> <span id="games_played">–</span></p>
+            <p><strong>Games Won:</strong> <span id="games_won">–</span></p>
+            <p><strong>Average Tiles:</strong> <span id="average_tiles">–</span></p>
+          </div>
+        </div>
+      </div>
+    </main>
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
       lucide.createIcons();
 
+      // Show/hide login vs. user
       async function main() {
-        const userProfile = await (await fetch("/api/users/@me")).json();
-        const loginButton = document.getElementById("login-button");
-        const registerButton = document.getElementById("register-button");
+        const profile = await (await fetch("/api/users/@me")).json();
+        const loginBtn = document.getElementById("login-button");
+        const regBtn = document.getElementById("register-button");
         const loggedIn = document.getElementById("logged-in");
-        const myUsername = document.getElementById("hello-username");
-
-        console.log("USER PROFILE", userProfile);
-        if (userProfile.id) {
-          loginButton.style.display = "none";
-          registerButton.style.display = "none";
+        const hello = document.getElementById("hello-username");
+        if (profile.id) {
+          loginBtn.style.display = "none";
+          regBtn.style.display = "none";
           loggedIn.style.display = "flex";
-          myUsername.innerText = `Hello ${userProfile.username}!`;
-        } else {
-          loginButton.style.display = "block";
-          registerButton.style.display = "block";
-          loggedIn.style.display = "none";
+          hello.textContent = `Hello, ${profile.username}!`;
         }
       }
-
       main();
+
+      // Populate dropdown & fetch stats
+      async function fetchUsers() {
+        const users = await (await fetch("/api/users")).json();
+        const dd = document.getElementById("userDropdown");
+        users.forEach(u => {
+          const opt = document.createElement("option");
+          opt.value = u.username;
+          opt.textContent = u.username;
+          dd.appendChild(opt);
+        });
+      }
+
+      document.getElementById("userDropdown").addEventListener("change", async e => {
+        const name = e.target.value;
+        if (!name) return;
+        const stats = await (await fetch(`/api/users/${name}/stats`)).json();
+        document.getElementById("games_played").textContent = stats.games_played ?? "–";
+        document.getElementById("games_won").textContent = stats.games_won ?? "–";
+        document.getElementById("average_tiles").textContent = stats.average_tiles ?? "–";
+      });
+
+      fetchUsers();
     </script>
   </body>
 </html>
