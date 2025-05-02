@@ -102,6 +102,22 @@ def avatar():
 def leaderboard():
     return render_template("leaderboard.html")
 
+@app.route("/api/users")
+def leaderboardusers():
+    users = users_collection.find({"games_played": {"$gte": 1}})
+
+    # Convert each user document to a plain dictionary and stringify the ObjectId
+    user_list = []
+    for user in users:
+        user["_id"] = str(user["_id"])  # Optional: convert _id to string
+        user_list.append({
+            "username": user.get("username", "Unknown"),
+            "games_played": user.get("games_played", 0),
+            "games_won": user.get("games_won", 0),
+        })
+
+    return jsonify(user_list)
+
 @app.route("/player-statistics")
 def stats():
     return render_template("player-statistics.html")

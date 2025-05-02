@@ -63,27 +63,107 @@
 
     <!-- Leaderboard Content -->
     <main class="pt-[80px] flex flex-col items-center animate-fadeIn px-4">
-      <div class="max-w-xl w-full bg-darkblue/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg space-y-6">
-        <h1 class="text-4xl font-bold text-tileYellow text-center">Leaderboard</h1>
-        <p class="text-center text-gray-300">🏆 Coming soon – see top players here!</p>
-        <!-- Example table skeleton -->
-        <!--
-        <table class="w-full text-left text-gray-200">
-          <thead>
-            <tr>
-              <th>#</th><th>Player</th><th>High Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>Alice</td><td>150</td></tr>
-            ...
-          </tbody>
-        </table>
-        -->
-      </div>
-    </main>
+  <div class="max-w-4xl w-full bg-darkblue/50 backdrop-blur-sm rounded-2xl p-8 shadow-lg space-y-6">
+    <h1 class="text-4xl font-bold text-tileYellow text-center">Leaderboard</h1>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <div class="flex justify-end">
+      <label class="mr-2">Sort by:</label>
+      <select id="sortSelect" class="p-2 rounded bg-white text-darkblue">
+        <option value="wins">Games Won</option>
+        <option value="winrate">Win Rate</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-gray-200 table-auto">
+        <thead>
+          <tr class="border-b border-gray-600">
+            <th class="py-2">Rank</th>
+            <th class="py-2">Player</th>
+            <th class="py-2">Games Played</th>
+            <th class="py-2">Games Won</th>
+            <th class="py-2">Win Rate</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody">
+          <!-- Dynamic rows inserted here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  lucide.createIcons();
+
+  async function main() {
+    const p = await (await fetch("/api/users/@me")).json();
+    const lb = document.getElementById("login-button");
+    const rb = document.getElementById("register-button");
+    const li = document.getElementById("logged-in");
+    const hi = document.getElementById("hello-username");
+    if (p.id) {
+      lb.style.display = "none";
+      rb.style.display = "none";
+      li.style.display = "flex";
+      hi.textContent = `Hello, ${p.username}!`;
+    }
+  }
+
+  async function fetchAndRenderLeaderboard(sortBy = "wins") {
+    const res = await fetch("/api/users");
+    const users = await res.json();
+
+    // Filter valid users and compute winrate
+    const processed = users
+      .filter(u => typeof u.games_played === "number" && typeof u.games_won === "number" && u.games_played > 0)
+      .map(u => ({
+        username: u.username,
+        games_played: u.games_played,
+        games_won: u.games_won,
+        winrate: (u.games_won / u.games_played) * 100,
+      }));
+
+    // Sort by desired metric
+    processed.sort((a, b) => {
+      if (sortBy === "wins") return b.games_won - a.games_won;
+      if (sortBy === "winrate") return b.winrate - a.winrate;
+      return 0;
+    });
+
+    // Assign ranks with tie handling
+    let rank = 1, lastScore = null, lastRank = 1;
+    const rows = [];
+    for (let i = 0; i < processed.length && rows.length < 10; i++) {
+      const p = processed[i];
+      const currentScore = sortBy === "wins" ? p.games_won : p.winrate.toFixed(2);
+      if (currentScore !== lastScore) {
+        lastRank = rank;
+        lastScore = currentScore;
+      }
+      rows.push(`
+        <tr class="border-t border-gray-700">
+          <td class="py-2">${lastRank}</td>
+          <td class="py-2">${p.username}</td>
+          <td class="py-2">${p.games_played}</td>
+          <td class="py-2">${p.games_won}</td>
+          <td class="py-2">${p.winrate.toFixed(2)}%</td>
+        </tr>
+     `);
+      rank++;
+    }
+
+    document.getElementById("leaderboardBody").innerHTML = rows.join("");
+  }
+
+  document.getElementById("sortSelect").addEventListener("change", e => {
+    fetchAndRenderLeaderboard(e.target.value);
+  });
+
+  main();
+  fetchAndRenderLeaderboard();
+</script>
     <script>
       lucide.createIcons();
 
