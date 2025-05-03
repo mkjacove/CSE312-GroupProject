@@ -156,6 +156,7 @@ def get_current_user():
             "games_played": user.get("games_played", 0),
             "games_won": user.get("games_won", 0),
             "average_tiles": user.get("average_tiles", 0),
+            "total_tiles": user.get("total_tiles", 0),
             "achievements": achievements
         })
     return jsonify({"id": None})
@@ -176,6 +177,7 @@ def get_user_stats(username):
         "games_played": user.get("games_played", 0),
         "games_won": user.get("games_won", 0),
         "average_tiles": user.get("average_tiles", 0),
+        "total_tiles": user.get("total_tiles", 0),
     }
     return jsonify(stats)
 
@@ -284,7 +286,7 @@ def _countdown_worker(abort_event: Event):
 
 def start_game():
     global game_in_progress, players, first_death_recorded
-    first_death_recorded = True
+    first_death_recorded = False
     players.clear()
 
     if len(lobby) < MIN_PLAYERS:

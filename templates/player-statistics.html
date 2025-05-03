@@ -75,6 +75,8 @@
             <p><strong>Games Played:</strong> <span id="games_played">–</span></p>
             <p><strong>Games Won:</strong> <span id="games_won">–</span></p>
             <p><strong>Average Tiles Broken:</strong> <span id="average_tiles">–</span></p>
+            <p><strong>Total Tiles Broken:</strong> <span id="total_tiles">–</span></p>
+
           </div>
         </div>
       </div>
@@ -119,6 +121,8 @@
         document.getElementById("games_played").textContent = stats.games_played ?? "–";
         document.getElementById("games_won").textContent = stats.games_won ?? "–";
         document.getElementById("average_tiles").textContent = stats.average_tiles ?? "–";
+        document.getElementById("total_tiles").textContent = stats.total_tiles ?? "–";
+
       });
 
       fetchUsers();
