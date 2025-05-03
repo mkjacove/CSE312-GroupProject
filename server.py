@@ -8,6 +8,7 @@ from flask import (
 )
 from flask_socketio import SocketIO, emit
 from utils.db import users_collection
+from utils.auth import auth_bp
 import imageio.v3 as iio
 import random
 import logging
@@ -21,9 +22,22 @@ countdown_abort_event: Event | None = None
 
 #testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
-app.secret_key = "very_secret_key"
+#app.secret_key = "very_secret_key"
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 app.permanent_session_lifetime = timedelta(days=1)
-app.config.update(SESSION_COOKIE_HTTPONLY=True)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True
+)
+
+def redact_tokens(message: str) -> str:
+    return re.sub(r"(Cookie:\s*Bearer\s+|access_token=|auth_token=|session=)([^\s&\"']+)", r"\1<REDACTED>", message, flags=re.IGNORECASE)
+
+class RedactingFilter(logging.Filter):
+    def filter(self, record):
+        record.msg = redact_tokens(str(record.msg))
+        return True
+
 
 log_path = "/app/~log.log"
 if not os.path.exists(log_path):
@@ -32,6 +46,7 @@ if not os.path.exists(log_path):
 log_handler = logging.FileHandler(log_path)
 log_handler.setLevel(logging.INFO)
 log_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+log_handler.addFilter(RedactingFilter())
 app.logger.addHandler(log_handler)
 app.logger.setLevel(logging.INFO)
 
@@ -42,11 +57,11 @@ if not os.path.exists(complete_log_path):
 complete_log_handler = logging.FileHandler(complete_log_path)
 complete_log_handler.setLevel(logging.INFO)
 complete_log_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+complete_log_handler.addFilter(RedactingFilter())
 complete_logger = logging.getLogger("complete_logger")
 complete_logger.addHandler(complete_log_handler)
 complete_logger.setLevel(logging.INFO)
 
-from utils.auth import auth_bp
 app.register_blueprint(auth_bp)
 
 lobby = []
