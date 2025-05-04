@@ -78,6 +78,11 @@ def serve_image(filename):
 def home():
     return render_template("home.html")
 
+@app.after_request
+def add_header(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
 @app.route("/change-avatar", methods=["GET", "POST"])
 def avatar():
     if "username" not in session or not users_collection.find_one({"username": session["username"]}):
