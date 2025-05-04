@@ -169,7 +169,9 @@ socket.on("tile-update", msg => {
     if (state === 1) {
       if (!activeRedTiles[board].has(key)){
       activeRedTiles[board].add(key);
-      socket.emit("stepped-on-tile", {username: username});
+      if(window.PLAYER_USERNAME === username) {
+        socket.emit("stepped-on-tile", {username: username});
+      }
     }}
 
     else activeRedTiles[board].delete(key);
