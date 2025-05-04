@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, abort, session, Response, escape
+from flask import Blueprint, render_template, request, redirect, url_for, abort, session, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import users_collection
 import re
 from flask import current_app
+from markupsafe import escape
 
 auth_bp = Blueprint("auth", __name__, url_prefix="")
 
