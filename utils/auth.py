@@ -35,6 +35,7 @@ def login():
             session["current_tiles"] = 0
             session["games_played"] = user.get("games_played")
             session["average_tiles"] = user.get("average_tiles")
+            session["total_tiles"] = user.get("total_tiles")
             session["games_won"] = user.get("games_won")
 
             return "logged in", 200

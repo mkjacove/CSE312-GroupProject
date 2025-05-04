@@ -183,16 +183,18 @@ socket.on("tile-init", data => {
 
 // ─── PER-TILE UPDATES ───────────────────────────────────────────────────────
 socket.on("tile-update", msg => {
-  const { key, state, board } = msg;
+  const { key, state, board, username:username } = msg;
   if (state === 0) {
     delete tileStates[board][key];
     activeRedTiles[board].delete(key);
   } else {
     tileStates[board][key] = state;
     if (state === 1) {
+      if (!activeRedTiles[board].has(key)){
       activeRedTiles[board].add(key);
-      // The tile was NOT red yet (white tile)
-      socket.emit("stepped-on-white", { key, board: b })}
+      socket.emit("stepped-on-tile", {username: username});
+    }}
+
     else activeRedTiles[board].delete(key);
   }
 });
@@ -275,7 +277,6 @@ socket.on("time-until-reset", data => {
 // ─── MOVE + EMIT ──────────────────────────────────────────────────────────
 let lastEmit = 0;
 function update() {
-  onPlayerMove(playerX, playerY);
   if (isEliminated) return;
   let dx = 0, dy = 0;
 
@@ -497,11 +498,12 @@ setInterval(() => {
         key = `${col},${row}`;
   const b   = playerBoardLevel;
   const st  = tileStates[b][key] || 0;
+  const username = window.PLAYER_USERNAME
 
   if (st === 2) {
     socket.emit("reset");
   } else {
-    socket.emit("tile", { key, board: b });
+    socket.emit("tile", { key, board: b, username: username });
   }
 }, 100);
 
@@ -509,7 +511,7 @@ setInterval(() => {
 setInterval(() => {
   for (let b = 1; b <= 3; b++) {
     for (const key of activeRedTiles[b]) {
-      socket.emit("tile", { key, board: b });
+      socket.emit("tile", { key, board: b, username: null});
     }
   }
 }, 1000);
@@ -521,20 +523,7 @@ setInterval(() => {
 //   }
 //   requestAnimationFrame(updateSurvivalTimerUI);
 // }
-let lastTile = "";
-function onPlayerMove(playerX, playerY) {
-  const tileX = Math.floor(playerX / tileSize);
-  const tileY = Math.floor(playerY / tileSize);
-  const newTile = `${tileX},${tileY}`;
-  if (newTile !== lastTile) {
-    lastTile = newTile;
-    const board = playerBoardLevel;
-    const tileState = tileStates[board][newTile];
-    if (!tileState) {
-      socket.emit("stepped-on-white", {key: newTile,board,username: window.PLAYER_USERNAME});
-    }
-  }
-}
+
 function gameLoop() {
   update();
   draw();

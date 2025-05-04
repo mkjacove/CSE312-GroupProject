@@ -20,9 +20,9 @@ from threading import Event
 COUNTDOWN_START = 10
 countdown_abort_event: Event | None = None
 
-#testaccount, theone, pass = T1h2e3%%One
+# testaccount, theone, pass = T1h2e3%%One
 app = Flask(__name__)
-#app.secret_key = "very_secret_key"
+# app.secret_key = "very_secret_key"
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 app.permanent_session_lifetime = timedelta(days=1)
 app.config.update(
@@ -30,8 +30,11 @@ app.config.update(
     SESSION_COOKIE_SECURE=True
 )
 
+
 def redact_tokens(message: str) -> str:
-    return re.sub(r"(Cookie:\s*Bearer\s+|access_token=|auth_token=|session=)([^\s&\"']+)", r"\1<REDACTED>", message, flags=re.IGNORECASE)
+    return re.sub(r"(Cookie:\s*Bearer\s+|access_token=|auth_token=|session=)([^\s&\"']+)", r"\1<REDACTED>", message,
+                  flags=re.IGNORECASE)
+
 
 class RedactingFilter(logging.Filter):
     def filter(self, record):
@@ -67,21 +70,26 @@ app.register_blueprint(auth_bp)
 lobby = []
 game_in_progress = False
 first_death_recorded = False
-MIN_PLAYERS = 2  # Minimum number of players to start the game
+MIN_PLAYERS = 0  # Minimum number of players to start the game
+
 
 # Serve images
 @app.route("/images/<filename>")
 def serve_image(filename):
     return send_from_directory(
-        os.path.join(app.root_path, "images/"),filename)
+        os.path.join(app.root_path, "images/"), filename)
+
+
 @app.route("/")
 def home():
     return render_template("home.html")
+
 
 @app.after_request
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
+
 
 @app.route("/change-avatar", methods=["GET", "POST"])
 def avatar():
@@ -123,6 +131,7 @@ def avatar():
 def leaderboard():
     return render_template("leaderboard.html")
 
+
 @app.route("/api/users")
 def leaderboardusers():
     users = users_collection.find({"games_played": {"$gte": 1}})
@@ -139,15 +148,18 @@ def leaderboardusers():
 
     return jsonify(user_list)
 
+
 @app.route("/player-statistics")
 def stats():
     return render_template("player-statistics.html")
+
 
 @app.route("/achievements")
 def achievements():
     if "username" not in session or not users_collection.find_one({"username": session["username"]}):
         return redirect(url_for("home", error="not_signed_in"))
     return render_template("achievements.html")
+
 
 @app.route("/play")
 def play():
@@ -158,6 +170,7 @@ def play():
         PLAYER_USERNAME=session["username"],
         PLAYER_AVATAR=session.get("avatar", "user.webp")
     )
+
 
 @app.route("/api/users/@me")
 def get_current_user():
@@ -181,12 +194,14 @@ def get_current_user():
         })
     return jsonify({"id": None})
 
+
 @app.route("/api/users")
 def get_all_users():
     users = []
     for user in users_collection.find({}):
         users.append({"username": user.get("username")})
     return jsonify(users)
+
 
 @app.route("/api/users/<username>/stats")
 def get_user_stats(username):
@@ -201,16 +216,17 @@ def get_user_stats(username):
     }
     return jsonify(stats)
 
+
 # ---------- WebSocket setup for /game namespace ----------
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Game grid settings (must match client!)
-TILE_SIZE  = 50
-GRID_COLS  = 500
-GRID_ROWS  = 500
+TILE_SIZE = 50
+GRID_COLS = 500
+GRID_ROWS = 500
 GRID_WIDTH = TILE_SIZE * GRID_COLS
-GRID_HEIGHT= TILE_SIZE * GRID_ROWS
+GRID_HEIGHT = TILE_SIZE * GRID_ROWS
 
 # Time interval for state transition (2 seconds)
 TILE_STATE_TRANSITION_DELAY = timedelta(seconds=2)
@@ -228,22 +244,22 @@ tile_timestamps = {
 }
 players = {}  # sid → { x, y, username, board_level, avatar }
 
-@socketio.on('stepped-on-white', namespace='/game')
-def stepped_on_white(data):
-    print(data)
-    user = data["username"]
-    print(user)
-    previous_tiles = users_collection.find_one({"username": user}).get('current_tiles')
-    users_collection.update_one({"username": user},{"$set": {"current_tiles": previous_tiles+1}})
-    print(users_collection.find_one({"username": user}).get('current_tiles'))
+
+@socketio.on('stepped-on-tile', namespace='/game')
+def stepped_on_tile(data):
+    user = data['username']
+    if user is not None:
+        previous_tiles = users_collection.find_one({"username": user}).get('current_tiles')
+        users_collection.update_one({"username": user}, {"$set": {"current_tiles": previous_tiles + 1}})
     return
 
 
 def _me():
     return {
         "username": session.get("username"),
-        "avatar":   session.get("avatar", "user.webp")
+        "avatar": session.get("avatar", "user.webp")
     }
+
 
 def find_random_white_tile(board_level):
     """Find a random (x, y) on a white tile (state == 0)."""
@@ -258,6 +274,7 @@ def find_random_white_tile(board_level):
     # fallback: center if nothing found
     return GRID_WIDTH / 2, GRID_HEIGHT / 2
 
+
 @socketio.on('connect', namespace='/game')
 def ws_connect():
     global game_in_progress
@@ -268,7 +285,7 @@ def ws_connect():
 
     sid = request.sid
 
-    player = {'sid': sid, 'username': session["username"],  'avatar': session.get("avatar", "user.webp")}
+    player = {'sid': sid, 'username': session["username"], 'avatar': session.get("avatar", "user.webp")}
     lobby.append(player)
 
     socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
@@ -276,6 +293,7 @@ def ws_connect():
     # Check if the game can start (at least MIN_PLAYERS)
     if len(lobby) >= MIN_PLAYERS:
         schedule_countdown()
+
 
 def schedule_countdown():
     """Abort any running countdown, then start a fresh 10s countdown."""
@@ -289,6 +307,7 @@ def schedule_countdown():
     countdown_abort_event = Event()
     # fire off the background task
     socketio.start_background_task(_countdown_worker, countdown_abort_event)
+
 
 def _countdown_worker(abort_event: Event):
     """Emit 'countdown' every second, then call start_game() at 0."""
@@ -304,6 +323,7 @@ def _countdown_worker(abort_event: Event):
     socketio.emit('countdown', {'time': 0}, namespace='/game')
     start_game()
 
+
 def start_game():
     global game_in_progress, players, first_death_recorded
     first_death_recorded = False
@@ -317,7 +337,7 @@ def start_game():
     socketio.emit('game_start', {}, namespace='/game')
 
     for player in lobby:
-        sid= player['sid']
+        sid = player['sid']
         spawn_x, spawn_y = find_random_white_tile(1)
         players[sid] = {
             "x": spawn_x,
@@ -334,6 +354,8 @@ def start_game():
 
     socketio.emit('tile-init', {'tileStates': tile_states}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
+
+
 
 @socketio.on('rejoin', namespace='/game')
 def handle_rejoin():
@@ -355,22 +377,25 @@ def handle_rejoin():
 
     # Rebuild their player object from session
     player = {
-        'sid':      sid,
+        'sid': sid,
         'username': session.get('username'),
-        'avatar':   session.get('avatar', 'user.webp')
+        'avatar': session.get('avatar', 'user.webp')
     }
     lobby.append(player)
 
     # Announce them joining
     emit('chat',
          {'text': f"{player['username']} has joined the lobby!"},
+
          namespace='/game',
          broadcast=True)
     socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
-    
+
     # If they've just pushed you over the player count, start a new countdown
     if len(lobby) >= MIN_PLAYERS:
         schedule_countdown()
+
+
 
 @socketio.on('move', namespace='/game')
 def handle_move(data):
@@ -386,6 +411,7 @@ def handle_move(data):
     })
     emit('players', {'players': players}, namespace='/game', broadcast=True)
 
+
 @socketio.on('tile', namespace='/game')
 def handle_tile(data):
     sid = request.sid
@@ -395,12 +421,13 @@ def handle_tile(data):
 
     board = data['board']
     key = data['key']
+    username = data['username']
     now = datetime.now()
 
     if tile_states[board].get(key, 0) == 0:
         tile_states[board][key] = 1
         tile_timestamps[board][key] = now
-        emit('tile-update', {'key': key, 'state': 1, 'board': board},
+        emit('tile-update', {'key': key, 'state': 1, 'board': board, 'username': username},
              namespace='/game', broadcast=True)
 
     # 1 ➔ 2 after delay
@@ -412,12 +439,13 @@ def handle_tile(data):
             due.append(k)
 
     for k in due:
-        emit('tile-update', {'key': k, 'state': 2, 'board': board},
+        emit('tile-update', {'key': k, 'state': 2, 'board': board, 'username': username},
              namespace='/game', broadcast=True)
 
     # re‑broadcast clicked tile
-    emit('tile-update', {'key': key, 'state': tile_states[board].get(key, 0), 'board': board},
+    emit('tile-update', {'key': key, 'state': tile_states[board].get(key, 0), 'board': board, 'username': username},
          namespace='/game', broadcast=True)
+
 
 @socketio.on('reset', namespace='/game')
 def handle_reset():
@@ -439,7 +467,9 @@ def handle_reset():
         players[sid]['y'] = spawn_y
 
         # tell client maybe (optional: pop-up "Level 2!")
-        emit('chat', {'text': f"{player['username']} fell to Board {current_board+1}!"}, namespace='/game', broadcast=True)
+        emit('chat', {'text': f"{player['username']} fell to Board {current_board + 1}!"}, namespace='/game',
+             broadcast=True)
+
 
     else:
         # eliminate player
@@ -461,7 +491,7 @@ def handle_reset():
             print(f"[handle_reset]   → deleted sid, players_after={players}")
 
         # notify *only* the eliminated player to redirect
-        emit('eliminated',  namespace='/game', to=sid)
+        emit('eliminated', namespace='/game', to=sid)
 
         emit('players', {'players': players}, namespace='/game', broadcast=True)
 
@@ -481,23 +511,25 @@ def handle_reset():
                                         {"$set": {"winner": True}})
 
         for player in lobby:
-            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
+            socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game',
+                          to=player["sid"])
         reset_game()
         return
+
 
 def reset_game():
     global game_in_progress, lobby, players
 
     global tile_states, tile_timestamps, countdown_abort_event
 
-     # 1) Flip the flag so new connects queue into the lobby
+    # 1) Flip the flag so new connects queue into the lobby
     game_in_progress = False
 
-     # 2) Clear out all player lists
+    # 2) Clear out all player lists
     lobby.clear()
     players.clear()
 
-      # 3) Reset every board’s tiles & timers
+    # 3) Reset every board’s tiles & timers
     for b in (1, 2, 3):
         tile_states[b].clear()
         tile_timestamps[b].clear()
@@ -505,10 +537,11 @@ def reset_game():
     # 4) Forget any countdown in flight
     countdown_abort_event = None
 
-      # 5) Announce end-of-game and send clients back to lobby view
+    # 5) Announce end-of-game and send clients back to lobby view
     socketio.emit('chat', {'text': "🏁 The game has ended! Waiting for players to join the next round."},
-                       namespace='/game')
+                  namespace='/game')
     socketio.emit('game_reset', {}, namespace='/game')
+
 
 @socketio.on('disconnect', namespace='/game')
 def ws_disconnect(sid, *args):
@@ -525,10 +558,11 @@ def ws_disconnect(sid, *args):
             socketio.emit('chat', {'text': f"{winner['username']} is the last player standing and has won the game!"},
                           namespace='/game')
             for player in lobby:
-                socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game', to=player["sid"])
+                socketio.emit('victory', {'username': winner['username'], 'redirect': '/'}, namespace='/game',
+                              to=player["sid"])
             reset_game()
             return
-        
+
     else:
         if lobby != []:
             for player in lobby:
@@ -539,22 +573,24 @@ def ws_disconnect(sid, *args):
 
     socketio.emit('lobby', {'players': [p['username'] for p in lobby]}, namespace='/game')
     socketio.emit('players', {'players': players}, namespace='/game')
-    
+
     user = users_collection.find_one({"username": session["username"]})
     games_played = user.get("games_played", 0)
     previous_games_played = games_played - 1
     previous_average_tiles = user.get("average_tiles", 0)
-    users_collection.update_one({"username": session["username"]},
-                                {"$set": {"total_tiles": user.get("total_tiles") + user.get("current_tiles", 0)}})
-    total_tiles = (previous_average_tiles*previous_games_played) + user.get("current_tiles", 0)
-    new_average = total_tiles/user.get("games_played", 1)
+    previous_total_tiles = user.get("total_tiles", 0)
+
+    users_collection.update_one({"username": session["username"]},{"$set": {"total_tiles": user.get("total_tiles") + user.get("current_tiles", 0)}})
+    total_tiles = previous_total_tiles + user.get("current_tiles", 0)
+    new_average = total_tiles / user.get("games_played", 1)
     users_collection.update_one({"username": session["username"]},
                                 {"$set": {"average_tiles": new_average}})
     session["average_tiles"] = new_average
     session.modified = True
     if user.get("total_tiles") >= 500:
         users_collection.update_one({"username": session["username"]},
-                                    {"$set": {"total_tiles": True}})
+                                    {"$set": {"tile_breaker": True}})
+
 
 @app.before_request
 def log_request_info():
@@ -564,6 +600,7 @@ def log_request_info():
     path = request.path
     status = "N/A"
     g.log_prefix = f"{user}@{ip} - {method} {path}"
+
 
 @app.after_request
 def log_response_info(response):
@@ -579,9 +616,11 @@ def handle_exception(e):
         f.write(traceback.format_exc())
     return "Internal Server Error", 500
 
+
 @app.route("/force-error")
 def force_error():
     raise RuntimeError("This is a test error!")
+
 
 @app.before_request
 def log_raw_request():
@@ -613,6 +652,7 @@ def log_raw_request():
         f"--- End Request ---\n"
     )
 
+
 @app.after_request
 def log_raw_response(response):
     headers = dict(response.headers)
@@ -634,6 +674,7 @@ def log_raw_response(response):
         f"--- End Response ---\n"
     )
     return response
+
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080, allow_unsafe_werkzeug=True)
