@@ -27,6 +27,7 @@ const tileSize = 50,
 
 let playerX = gridWidth/2,
     playerY = gridHeight/2;
+let hasSpawned = false;
 let cameraX = 0,
     cameraY = 0;
 let keys = {},
@@ -68,9 +69,7 @@ const MIN_PLAYERS = 2;
 const COUNTDOWN_SECONDS = 10;
 
 // Lobby state
-let lobbyCount = 0,
-    countdown = COUNTDOWN_SECONDS,
-    countdownInterval = null;
+let lobbyCount = 0
 
 // Grab lobby DOM nodes
 const lobbyOverlay      = document.getElementById("lobby-overlay");
@@ -79,10 +78,7 @@ const lobbyCountdownEl  = document.getElementById("lobby-countdown");
 
 // Handle server “lobby” broadcasts
 socket.on("lobby", data => {
-  const players = data.players;            // [ 'alice', 'bob', ... ]
-  lobbyCount = players.length;
-
-  // 1) update player list
+  const players = data.players;
   lobbyPlayerList.innerHTML = "";
   players.forEach(name => {
     const li = document.createElement("li");
@@ -90,41 +86,12 @@ socket.on("lobby", data => {
     lobbyPlayerList.appendChild(li);
   });
 
-  // 2) if enough players, start countdown (if not already running)
-  if (lobbyCount >= MIN_PLAYERS) {
-    if (!countdownInterval) {
-      lobbyCountdownEl.textContent = `${countdown}`;  
-      countdownInterval = setInterval(tickLobbyCountdown, 1000);
-    }
-  } else {
-    // too few players: reset
-    resetLobbyCountdown();
-    lobbyCountdownEl.textContent = `Waiting… (${MIN_PLAYERS}-${lobbyCount < MIN_PLAYERS ? "waiting" : ""})`;
+  // if too few players, show how many more
+  if (players.length < MIN_PLAYERS) {
+    lobbyCountdownEl.textContent = `Waiting… (${MIN_PLAYERS - players.length} more)`;
   }
+  // otherwise, do nothing – the server's countdown events will update the number
 });
-
-// Countdown “tick”
-function tickLobbyCountdown() {
-  countdown--;
-  lobbyCountdownEl.textContent = countdown;
-
-  if (countdown <= 0) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-    // tell server to start the game (or wait for server to broadcast "game_start")
-    socket.emit("start_game");        // your server needs to listen for this…
-    hideLobby();
-  }
-}
-
-// Reset countdown if players drop below threshold
-function resetLobbyCountdown() {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-  countdown = COUNTDOWN_SECONDS;
-}
 
 // Hide overlay & kick off gameLoop if not already started
 function hideLobby() {
@@ -160,6 +127,17 @@ socket.on("victory", data => {
 });
 
 socket.on("countdown", data => {
+  // 1) Lobby countdown (only update if we're still in the lobby view)
+  if (!lobbyOverlay.classList.contains("hidden")) {
+    if (data.time > 0) {
+      lobbyCountdownEl.textContent = data.time;
+    } else {
+      // server just hit zero → hide the lobby for everyone
+      hideLobby();
+    }
+  }
+
+  // 2) (Optional) in‑game countdown display
   const cd = document.getElementById("countdown");
   if (data.time > 0) {
     cd.textContent = `Game starts in ${data.time}s…`;
@@ -168,7 +146,6 @@ socket.on("countdown", data => {
     cd.style.display = "none";
   }
 });
-
 // ─── INITIAL TILES ──────────────────────────────────────────────────────────
 socket.on("tile-init", data => {
   tileStates = {1:{},2:{},3:{}};
@@ -206,12 +183,19 @@ socket.on("players", msg => {
     const d = msg.players[id];
 
     if (id === socket.id) {
-      if (playerX === gridWidth/2) {
+      // if (playerX === gridWidth/2) {
+      //   playerX = d.x;
+      // }
+      // if (playerY === gridHeight/2) {
+      //   playerY = d.y;
+      // }
+      if(!hasSpawned) {
         playerX = d.x;
-      }
-      if (playerY === gridHeight/2) {
         playerY = d.y;
+        hasSpawned = true;
       }
+
+
       playerBoardLevel = d.board_level;
 
       // Update survival time based on server
@@ -249,9 +233,9 @@ socket.on("game_start", () => {
 });
 socket.on("game_reset", () => {
   gameStarted = false;
+  hasSpawned = false;
   tileStates = {1:{},2:{},3:{}};
   otherPlayers = {};
-
   socket.emit("rejoin");
 });
 
