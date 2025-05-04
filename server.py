@@ -70,7 +70,7 @@ app.register_blueprint(auth_bp)
 lobby = []
 game_in_progress = False
 first_death_recorded = False
-MIN_PLAYERS = 0  # Minimum number of players to start the game
+MIN_PLAYERS = 2  # Minimum number of players to start the game
 
 
 # Serve images
