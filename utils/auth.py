@@ -7,6 +7,7 @@ from flask import current_app
 auth_bp = Blueprint("auth", __name__, url_prefix="")
 
 def is_valid_password(password):
+    password = escape(password)
     if len(password) < 10:
         return False, "Password must be at least 10 characters long."
     if not re.search(r"[0-9]", password):
@@ -21,6 +22,8 @@ def login():
         session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
+        username = escape(username)
+        password = escape(password)
         user = users_collection.find_one({"username": username})
         if user and check_password_hash(user["password"], password):
             print(f"✅ Logged in as {username}")
@@ -48,6 +51,8 @@ def register():
         session.clear()
         username = request.form.get("username")
         password = request.form.get("password")
+        username = escape(username)
+        password = escape(password)
 
         if users_collection.find_one({"username": username}):
 
