@@ -20,8 +20,8 @@ resizeCanvas();
 
 // --- game constants + state
 const tileSize = 50,
-      gridCols = 100,
-      gridRows = 100,
+      gridCols = 150,
+      gridRows = 150,
       gridWidth  = tileSize * gridCols,
       gridHeight = tileSize * gridRows;
 

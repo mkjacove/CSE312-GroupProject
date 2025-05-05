@@ -223,8 +223,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Game grid settings (must match client!)
 TILE_SIZE = 50
-GRID_COLS = 100
-GRID_ROWS = 100
+GRID_COLS = 150
+GRID_ROWS = 150
 GRID_WIDTH = TILE_SIZE * GRID_COLS
 GRID_HEIGHT = TILE_SIZE * GRID_ROWS
 
