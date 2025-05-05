@@ -17,7 +17,7 @@ import re
 
 from threading import Event
 
-COUNTDOWN_START = 20
+COUNTDOWN_START = 10
 countdown_abort_event: Event | None = None
 
 # testaccount, theone, pass = T1h2e3%%One
